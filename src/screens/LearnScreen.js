@@ -7,14 +7,13 @@ import {
   SafeAreaView,
   TextInput,
   ScrollView,
-  Modal,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
 import { getColors } from '../utils/colors';
-import { speakJapanese, shuffleArray, getToday } from '../utils/helpers';
+import { speakJapanese, shuffleArray } from '../utils/helpers';
 
 export default function LearnScreen({ route, navigation }) {
   const { words: initialWords, mode = 'learn' } = route.params;
@@ -50,6 +49,7 @@ export default function LearnScreen({ route, navigation }) {
   const [spellingCorrect, setSpellingCorrect] = useState(0);
   const [spellingWords, setSpellingWords] = useState([]);
   const [waitingForNext, setWaitingForNext] = useState(false);
+  const [showMeaningCard, setShowMeaningCard] = useState(false);
 
   const answerDelayRef = useRef(null);
   const spellingTimeoutRef = useRef(null);
@@ -77,6 +77,7 @@ export default function LearnScreen({ route, navigation }) {
       generateOptionsForWord(currentWord);
       setShowAnswer(false);
       setWaitingForNext(false);
+      setShowMeaningCard(false);
       setSelectedOption(null);
       setOptionsDisabled(false);
       setIsCorrect(null);
@@ -85,14 +86,12 @@ export default function LearnScreen({ route, navigation }) {
 
   const generateOptionsForWord = useCallback((word) => {
     if (!word) return;
-
     const correctMeaning = word.meaning;
     const wrongOptions = allWords
       .filter(w => w.id !== word.id)
       .sort(() => Math.random() - 0.5)
       .slice(0, 3)
       .map(w => w.meaning);
-
     const allOptions = shuffleArray([correctMeaning, ...wrongOptions]);
     setOptions(allOptions);
   }, [allWords]);
@@ -107,7 +106,6 @@ export default function LearnScreen({ route, navigation }) {
     recordAnswer(currentWord.id, correct ? 'know' : 'dontKnow');
 
     const progress = getWordProgress(currentWord.id) || { currentRound: 1, consecutiveCorrect: 0 };
-
     if (correct) {
       progress.consecutiveCorrect++;
     } else {
@@ -125,7 +123,6 @@ export default function LearnScreen({ route, navigation }) {
 
   const handleShowAnswer = () => {
     if (answerDelayRef.current) clearTimeout(answerDelayRef.current);
-
     setOptionsDisabled(true);
     setSelectedOption(null);
     setIsCorrect(false);
@@ -153,34 +150,36 @@ export default function LearnScreen({ route, navigation }) {
         progress.consecutiveCorrect++;
         progress.currentRound = 3;
         updateUserVocabForRound(currentWord.id, 2);
+        handleNextWord();
       } else {
         progress.consecutiveCorrect = 0;
         progress.currentRound = 1;
         updateUserVocabForRound(currentWord.id, 0);
+        setShowMeaningCard(true);
       }
     } else if (round === 3) {
       if (isKnow) {
         progress.consecutiveCorrect = 3;
         progress.currentRound = 4;
         updateUserVocabForRound(currentWord.id, 2);
+        handleNextWord();
       } else {
         progress.consecutiveCorrect = 0;
         progress.currentRound = 1;
         updateUserVocabForRound(currentWord.id, 0);
+        setShowMeaningCard(true);
       }
     }
 
     setWordProgress(currentWord.id, progress);
-    handleNextWord();
   };
 
   const updateUserVocabForRound = (wordId, quality) => {
-    const currentVocab = updateUserVocab(wordId, quality);
+    updateUserVocab(wordId, quality);
   };
 
   const handleNextWord = () => {
     if (answerDelayRef.current) clearTimeout(answerDelayRef.current);
-
     if (!currentWord) return;
 
     const progress = getWordProgress(currentWord.id) || { currentRound: 1, consecutiveCorrect: 0 };
@@ -195,7 +194,7 @@ export default function LearnScreen({ route, navigation }) {
 
     let newQueue;
     let newIndex = currentIndex;
-    const isMastered = progress.consecutiveCorrect >= 3;
+    const isMastered = progress.consecutiveCorrect >= 3 && progress.currentRound >= 4;
 
     if (isMastered) {
       newQueue = learnQueue.filter((_, idx) => idx !== currentIndex);
@@ -211,6 +210,7 @@ export default function LearnScreen({ route, navigation }) {
 
     setShowAnswer(false);
     setWaitingForNext(false);
+    setShowMeaningCard(false);
     setOptionsDisabled(false);
     setSelectedOption(null);
     setIsCorrect(null);
@@ -227,27 +227,10 @@ export default function LearnScreen({ route, navigation }) {
     }
   };
 
-  const handleClose = () => {
-    navigation.goBack();
-  };
-
-  const handleBookmark = () => {
-    if (currentWord) {
-      toggleBookmark(currentWord.id);
-    }
-  };
-
-  const handlePronounce = () => {
-    if (currentWord) {
-      speakJapanese(currentWord.word);
-    }
-  };
-
-  const handleExamplePronounce = () => {
-    if (currentWord?.example) {
-      speakJapanese(currentWord.example);
-    }
-  };
+  const handleClose = () => navigation.goBack();
+  const handleBookmark = () => currentWord && toggleBookmark(currentWord.id);
+  const handlePronounce = () => currentWord && speakJapanese(currentWord.word);
+  const handleExamplePronounce = () => currentWord?.example && speakJapanese(currentWord.example);
 
   const startSpellingTest = () => {
     setSpellingWords([...learnQueue]);
@@ -260,14 +243,10 @@ export default function LearnScreen({ route, navigation }) {
 
   const handleSpellingSubmit = () => {
     if (!spellingWords[spellingIndex]) return;
-
     const correct = spellingInput.trim().toLowerCase().replace(/\s+/g, '') ===
       spellingWords[spellingIndex].word.toLowerCase().replace(/\s+/g, '');
-
     setSpellingResult(correct);
-    if (correct) {
-      setSpellingCorrect(prev => prev + 1);
-    }
+    if (correct) setSpellingCorrect(prev => prev + 1);
 
     spellingTimeoutRef.current = setTimeout(() => {
       if (spellingIndex < spellingWords.length - 1) {
@@ -287,46 +266,55 @@ export default function LearnScreen({ route, navigation }) {
   };
 
   const handleSpellingPronounce = () => {
-    if (spellingWords[spellingIndex]) {
-      speakJapanese(spellingWords[spellingIndex].word);
-    }
+    if (spellingWords[spellingIndex]) speakJapanese(spellingWords[spellingIndex].word);
   };
 
   const getOptionStyle = (option) => {
-    if (!optionsDisabled) {
-      return { backgroundColor: colors.card };
-    }
-
+    if (!optionsDisabled) return { backgroundColor: colors.card };
     const isCorrectOption = option === currentWord?.meaning;
     const isSelectedOption = option === selectedOption;
-
-    if (isCorrectOption) {
-      return { backgroundColor: '#22c55e', borderWidth: 2, borderColor: '#16a34a' };
-    }
-    if (isSelectedOption && !isCorrect) {
-      return { backgroundColor: '#ef4444', borderWidth: 2, borderColor: '#dc2626' };
-    }
+    if (isCorrectOption) return { backgroundColor: '#22c55e', borderWidth: 2, borderColor: '#16a34a' };
+    if (isSelectedOption && !isCorrect) return { backgroundColor: '#ef4444', borderWidth: 2, borderColor: '#dc2626' };
     return { backgroundColor: colors.card };
   };
 
   const getOptionTextStyle = (option) => {
-    if (!optionsDisabled) {
-      return { color: colors.text };
-    }
-
+    if (!optionsDisabled) return { color: colors.text };
     const isCorrectOption = option === currentWord?.meaning;
-    if (isCorrectOption) {
-      return { color: '#ffffff' };
-    }
-    if (option === selectedOption && !isCorrect) {
-      return { color: '#ffffff' };
-    }
+    if (isCorrectOption) return { color: '#ffffff' };
+    if (option === selectedOption && !isCorrect) return { color: '#ffffff' };
     return { color: colors.text };
   };
 
   const progress = initialCount > 0 ? (completedCount / initialCount) * 100 : 0;
   const currentRound = currentWord ? (getWordProgress(currentWord.id)?.currentRound || 1) : 1;
 
+  const renderMeaningCard = () => (
+    <ScrollView style={styles.meaningSection}>
+      <View style={[styles.meaningCard, { backgroundColor: colors.card }]}>
+        <Text style={[styles.typeTag, { color: colors.primary, backgroundColor: colors.primaryLight }]}>
+          {currentWord?.type}
+        </Text>
+        <Text style={[styles.meaningText, { color: colors.text }]}>{currentWord?.meaning}</Text>
+        {currentWord?.meaning2 && (
+          <Text style={[styles.meaning2Text, { color: colors.textSecondary }]}>{currentWord.meaning2}</Text>
+        )}
+        {currentWord?.example && (
+          <View style={styles.exampleSection}>
+            <Text style={[styles.exampleJp, { color: colors.text }]}>{currentWord.example}</Text>
+            {currentWord?.exampleZh && (
+              <Text style={[styles.exampleZh, { color: colors.textSecondary }]}>{currentWord.exampleZh}</Text>
+            )}
+            <TouchableOpacity style={styles.exampleSpeaker} onPress={handleExamplePronounce}>
+              <Ionicons name="volume-high" size={20} color={colors.primary} />
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    </ScrollView>
+  );
+
+  // 学习完成界面
   if (!currentWord && learnQueue.length === 0 && !showSpelling) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -343,6 +331,7 @@ export default function LearnScreen({ route, navigation }) {
     );
   }
 
+  // 拼写测试界面
   if (showSpelling && spellingWords.length > 0) {
     const spellingWord = spellingWords[spellingIndex];
     return (
@@ -408,190 +397,104 @@ export default function LearnScreen({ route, navigation }) {
     );
   }
 
+  // 主学习界面
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.primaryLight }]}>
       <View style={styles.container}>
+        {/* 头部 */}
         <View style={styles.header}>
           <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
             <Ionicons name="close" size={24} color={colors.textSecondary} />
           </TouchableOpacity>
-
           <View style={styles.roundIndicator}>
             {[1, 2, 3].map(round => (
-              <View
-                key={round}
-                style={[
-                  styles.roundDot,
-                  {
-                    backgroundColor:
-                      currentRound >= round ? colors.primary : colors.textTertiary,
-                  },
-                ]}
-              />
+              <View key={round} style={[styles.roundDot, { backgroundColor: currentRound >= round ? colors.primary : colors.textTertiary }]} />
             ))}
           </View>
-
-          <Text style={[styles.countText, { color: colors.textSecondary }]}>
-            {completedCount}/{initialCount}
-          </Text>
-
+          <Text style={[styles.countText, { color: colors.textSecondary }]}>{completedCount}/{initialCount}</Text>
           <View style={styles.progressBar}>
-            <View
-              style={[
-                styles.progressFill,
-                { width: `${progress}%`, backgroundColor: colors.primary },
-              ]}
-            />
+            <View style={[styles.progressFill, { width: `${progress}%`, backgroundColor: colors.primary }]} />
           </View>
-
           <TouchableOpacity onPress={handleBookmark} style={styles.headerButton}>
-            <Ionicons
-              name={bookmarkedWords.includes(currentWord?.id) ? 'star' : 'star-outline'}
-              size={22}
-              color={bookmarkedWords.includes(currentWord?.id) ? '#fbbf24' : colors.textSecondary}
-            />
+            <Ionicons name={bookmarkedWords.includes(currentWord?.id) ? 'star' : 'star-outline'} size={22} color={bookmarkedWords.includes(currentWord?.id) ? '#fbbf24' : colors.textSecondary} />
           </TouchableOpacity>
         </View>
 
+        {/* 单词展示区 */}
         <View style={styles.wordSection}>
           <Text style={[styles.wordText, { color: colors.text }]}>{currentWord?.word}</Text>
           <View style={styles.wordMeta}>
-            <Text style={[styles.kanaText, { color: colors.textSecondary }]}>
-              {currentWord?.kana}
-            </Text>
-            <Text style={[styles.pitchText, { color: colors.primary }]}>
-              {currentWord?.pitch}
-            </Text>
+            <Text style={[styles.kanaText, { color: colors.textSecondary }]}>{currentWord?.kana}</Text>
+            <Text style={[styles.pitchText, { color: colors.primary }]}>{currentWord?.pitch}</Text>
           </View>
           <TouchableOpacity style={styles.speakerButton} onPress={handlePronounce}>
             <Ionicons name="volume-high" size={28} color={colors.primary} />
           </TouchableOpacity>
         </View>
-
         <View style={styles.typeSection}>
-          <Text style={[styles.typeTag, { color: colors.primary, backgroundColor: colors.primaryLight }]}>
-            {currentWord?.type}
-          </Text>
+          <Text style={[styles.typeTag, { color: colors.primary, backgroundColor: colors.primaryLight }]}>{currentWord?.type}</Text>
         </View>
 
-        {currentRound === 1 && !waitingForNext && (
-          <View style={styles.optionsSection}>
-            {options.map((option, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[styles.optionButton, getOptionStyle(option)]}
-                onPress={() => handleSelectOption(option)}
-                disabled={optionsDisabled}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.optionLetter, {
-                  color: optionsDisabled && option === currentWord?.meaning ? '#ffffff' : colors.primary
-                }]}>
-                  {String.fromCharCode(65 + index)}
-                </Text>
-                <Text style={getOptionTextStyle(option)}>{option}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-
-        {currentRound === 1 && !waitingForNext && (
-          <View style={styles.showAnswerSection}>
-            <TouchableOpacity
-              style={[styles.showAnswerButton, { backgroundColor: colors.primary }]}
-              onPress={handleShowAnswer}
-            >
-              <Text style={styles.showAnswerText}>看答案</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {waitingForNext && (
-          <ScrollView style={styles.meaningSection}>
-            <View style={[styles.meaningCard, { backgroundColor: colors.card }]}>
-              <Text style={[styles.typeTag, { color: colors.primary, backgroundColor: colors.primaryLight }]}>
-                {currentWord?.type}
-              </Text>
-              <Text style={[styles.meaningText, { color: colors.text }]}>
-                {currentWord?.meaning}
-              </Text>
-              {currentWord?.meaning2 && (
-                <Text style={[styles.meaning2Text, { color: colors.textSecondary }]}>
-                  {currentWord.meaning2}
-                </Text>
-              )}
-
-              {currentWord?.example && (
-                <View style={styles.exampleSection}>
-                  <Text style={[styles.exampleJp, { color: colors.text }]}>
-                    {currentWord.example}
+        {/* 第1轮：未看答案时显示选项 + 看答案按钮 */}
+        {currentRound === 1 && !waitingForNext && !showMeaningCard && (
+          <>
+            <View style={styles.optionsSection}>
+              {options.map((option, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[styles.optionButton, getOptionStyle(option)]}
+                  onPress={() => handleSelectOption(option)}
+                  disabled={optionsDisabled}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.optionLetter, { color: optionsDisabled && option === currentWord?.meaning ? '#ffffff' : colors.primary }]}>
+                    {String.fromCharCode(65 + index)}
                   </Text>
-                  {currentWord?.exampleZh && (
-                    <Text style={[styles.exampleZh, { color: colors.textSecondary }]}>
-                      {currentWord.exampleZh}
-                    </Text>
-                  )}
-                  <TouchableOpacity style={styles.exampleSpeaker} onPress={handleExamplePronounce}>
-                    <Ionicons name="volume-high" size={20} color={colors.primary} />
-                  </TouchableOpacity>
-                </View>
-              )}
+                  <Text style={getOptionTextStyle(option)}>{option}</Text>
+                </TouchableOpacity>
+              ))}
             </View>
-          </ScrollView>
+            <View style={styles.showAnswerSection}>
+              <TouchableOpacity style={[styles.showAnswerButton, { backgroundColor: colors.primary }]} onPress={handleShowAnswer}>
+                <Text style={styles.showAnswerText}>看答案</Text>
+              </TouchableOpacity>
+            </View>
+          </>
         )}
 
-        {currentRound >= 2 && currentRound <= 3 && (
+        {/* 第2、3轮：未不认识时显示判断区域 */}
+        {currentRound >= 2 && currentRound <= 3 && !waitingForNext && !showMeaningCard && (
           <View style={styles.judgmentSection}>
-            <Text style={[styles.roundLabel, { color: colors.textTertiary }]}>
-              第{currentRound}轮
-            </Text>
-
+            <Text style={[styles.roundLabel, { color: colors.textTertiary }]}>第{currentRound}轮</Text>
             {currentRound === 2 && currentWord?.example && (
               <View style={[styles.round2Card, { backgroundColor: colors.card }]}>
                 <Text style={[styles.exampleLabel, { color: colors.textSecondary }]}>例句：</Text>
-                <Text style={[styles.round2ExampleJp, { color: colors.text }]}>
-                  {currentWord.example}
-                </Text>
-                <Text style={[styles.round2ExampleZh, { color: colors.textSecondary }]}>
-                  {currentWord.exampleZh}
-                </Text>
-                <TouchableOpacity style={styles.round2Speaker} onPress={handleExamplePronounce}>
-                  <Ionicons name="volume-high" size={20} color={colors.primary} />
-                </TouchableOpacity>
+                <Text style={[styles.round2ExampleJp, { color: colors.text }]}>{currentWord.example}</Text>
+                <View style={styles.round2SpeakerContainer}>
+                  <TouchableOpacity onPress={handleExamplePronounce}>
+                    <Ionicons name="volume-high" size={24} color={colors.primary} />
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
-
-            {currentRound === 3 && (
-              <View style={[styles.round3Card, { backgroundColor: colors.card }]}>
-                <TouchableOpacity style={styles.round3Speaker} onPress={handlePronounce}>
-                  <Ionicons name="volume-high" size={32} color={colors.primary} />
-                </TouchableOpacity>
-              </View>
-            )}
-
             <View style={styles.judgmentButtons}>
-              <TouchableOpacity
-                style={[styles.knowButton, { backgroundColor: colors.success }]}
-                onPress={() => handleJudgment(true)}
-              >
+              <TouchableOpacity style={[styles.knowButton, { backgroundColor: colors.success }]} onPress={() => handleJudgment(true)}>
                 <Text style={styles.judgmentText}>认识</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.dontKnowButton, { backgroundColor: colors.danger }]}
-                onPress={() => handleJudgment(false)}
-              >
+              <TouchableOpacity style={[styles.dontKnowButton, { backgroundColor: colors.danger }]} onPress={() => handleJudgment(false)}>
                 <Text style={styles.judgmentText}>不认识</Text>
               </TouchableOpacity>
             </View>
           </View>
         )}
 
-        {waitingForNext && (
+        {/* 答案卡片（第1轮看答案后 或 第2/3轮不认识后） */}
+        {(waitingForNext || showMeaningCard) && renderMeaningCard()}
+
+        {/* 下一词按钮 */}
+        {(waitingForNext || showMeaningCard) && (
           <View style={styles.nextButtonSection}>
-            <TouchableOpacity
-              style={[styles.nextButton, { backgroundColor: colors.primary }]}
-              onPress={handleNextWord}
-            >
+            <TouchableOpacity style={[styles.nextButton, { backgroundColor: colors.primary }]} onPress={handleNextWord}>
               <Text style={styles.nextButtonText}>下一词</Text>
             </TouchableOpacity>
           </View>
@@ -602,308 +505,64 @@ export default function LearnScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 20,
-  },
-  completeText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  spellingButton: {
-    paddingVertical: 14,
-    paddingHorizontal: 32,
-    borderRadius: 12,
-  },
-  spellingButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  spellingContainer: {
-    flex: 1,
-    padding: 20,
-  },
-  spellingHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  spellingProgress: {
-    fontSize: 16,
-  },
-  spellingContent: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  spellingMeaning: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  spellingSpeaker: {
-    padding: 16,
-    backgroundColor: '#eff6ff',
-    borderRadius: 30,
-  },
-  spellingInputContainer: {
-    marginBottom: 20,
-  },
-  spellingInput: {
-    borderWidth: 2,
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 18,
-    textAlign: 'center',
-  },
-  spellingFeedback: {
-    marginTop: 12,
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  spellingFeedbackText: {
-    color: '#fff',
-    fontSize: 14,
-  },
-  spellingSubmitButton: {
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  spellingSubmitText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  closeButton: {
-    padding: 8,
-  },
-  roundIndicator: {
-    flexDirection: 'row',
-    gap: 4,
-    marginHorizontal: 8,
-  },
-  roundDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  countText: {
-    fontSize: 12,
-    marginHorizontal: 8,
-  },
-  progressBar: {
-    flex: 1,
-    height: 6,
-    backgroundColor: '#e5e7eb',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  headerButton: {
-    padding: 8,
-  },
-  wordSection: {
-    alignItems: 'center',
-    paddingVertical: 24,
-  },
-  wordText: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  wordMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  kanaText: {
-    fontSize: 16,
-  },
-  pitchText: {
-    fontSize: 14,
-    backgroundColor: '#eff6ff',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-  speakerButton: {
-    marginTop: 16,
-    padding: 12,
-    backgroundColor: '#eff6ff',
-    borderRadius: 25,
-  },
-  typeSection: {
-    alignItems: 'center',
-    paddingBottom: 16,
-  },
-  typeTag: {
-    fontSize: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  optionsSection: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-  },
-  optionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 8,
-  },
-  optionLetter: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginRight: 12,
-  },
-  optionText: {
-    fontSize: 16,
-  },
-  showAnswerSection: {
-    paddingHorizontal: 16,
-  },
-  showAnswerButton: {
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  showAnswerText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  meaningSection: {
-    flex: 1,
-    paddingHorizontal: 16,
-  },
-  meaningCard: {
-    padding: 20,
-    borderRadius: 16,
-    alignItems: 'center',
-  },
-  meaningText: {
-    fontSize: 20,
-    marginVertical: 12,
-  },
-  meaning2Text: {
-    fontSize: 14,
-    color: '#9ca3af',
-  },
-  exampleSection: {
-    marginTop: 16,
-    alignItems: 'center',
-    position: 'relative',
-  },
-  exampleJp: {
-    fontSize: 16,
-    marginBottom: 4,
-  },
-  exampleZh: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  exampleSpeaker: {
-    position: 'absolute',
-    right: -40,
-    top: 0,
-    padding: 8,
-  },
-  judgmentSection: {
-    paddingHorizontal: 16,
-  },
-  roundLabel: {
-    textAlign: 'center',
-    fontSize: 12,
-    marginBottom: 12,
-  },
-  round2Card: {
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 12,
-    position: 'relative',
-  },
-  exampleLabel: {
-    fontSize: 12,
-    marginBottom: 8,
-  },
-  round2ExampleJp: {
-    fontSize: 16,
-    marginBottom: 4,
-  },
-  round2ExampleZh: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  round2Speaker: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    padding: 8,
-  },
-  round3Card: {
-    padding: 24,
-    borderRadius: 16,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  round3Speaker: {
-    padding: 16,
-    backgroundColor: '#eff6ff',
-    borderRadius: 30,
-  },
-  judgmentButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  knowButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  dontKnowButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  judgmentText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  nextButtonSection: {
-    paddingHorizontal: 16,
-    marginTop: 16,
-  },
-  nextButton: {
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  nextButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
+  container: { flex: 1 },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 20 },
+  completeText: { fontSize: 24, fontWeight: 'bold' },
+  spellingButton: { paddingVertical: 14, paddingHorizontal: 32, borderRadius: 12 },
+  spellingButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  spellingContainer: { flex: 1, padding: 20 },
+  spellingHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 40 },
+  spellingProgress: { fontSize: 16 },
+  spellingContent: { alignItems: 'center', marginBottom: 40 },
+  spellingMeaning: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 },
+  spellingSpeaker: { padding: 16, backgroundColor: '#eff6ff', borderRadius: 30 },
+  spellingInputContainer: { marginBottom: 20 },
+  spellingInput: { borderWidth: 2, borderRadius: 12, padding: 16, fontSize: 18, textAlign: 'center' },
+  spellingFeedback: { marginTop: 12, padding: 12, borderRadius: 8, alignItems: 'center' },
+  spellingFeedbackText: { color: '#fff', fontSize: 14 },
+  spellingSubmitButton: { paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  spellingSubmitText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8 },
+  closeButton: { padding: 8 },
+  roundIndicator: { flexDirection: 'row', gap: 4, marginHorizontal: 8 },
+  roundDot: { width: 8, height: 8, borderRadius: 4 },
+  countText: { fontSize: 12, marginHorizontal: 8 },
+  progressBar: { flex: 1, height: 6, backgroundColor: '#e5e7eb', borderRadius: 3, overflow: 'hidden' },
+  progressFill: { height: '100%', borderRadius: 3 },
+  headerButton: { padding: 8 },
+  wordSection: { alignItems: 'center', paddingVertical: 24 },
+  wordText: { fontSize: 36, fontWeight: 'bold', marginBottom: 8 },
+  wordMeta: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  kanaText: { fontSize: 16 },
+  pitchText: { fontSize: 14, backgroundColor: '#eff6ff', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
+  speakerButton: { marginTop: 16, padding: 12, backgroundColor: '#eff6ff', borderRadius: 25 },
+  typeSection: { alignItems: 'center', paddingBottom: 16 },
+  typeTag: { fontSize: 12, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 },
+  optionsSection: { paddingHorizontal: 16, paddingBottom: 16 },
+  optionButton: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 12, marginBottom: 8 },
+  optionLetter: { fontSize: 16, fontWeight: 'bold', marginRight: 12 },
+  showAnswerSection: { paddingHorizontal: 16 },
+  showAnswerButton: { paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  showAnswerText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  meaningSection: { flex: 1, paddingHorizontal: 16 },
+  meaningCard: { padding: 20, borderRadius: 16, alignItems: 'center' },
+  meaningText: { fontSize: 20, marginVertical: 12 },
+  meaning2Text: { fontSize: 14, color: '#9ca3af' },
+  exampleSection: { marginTop: 16, width: '100%', alignItems: 'center' },
+  exampleJp: { fontSize: 16, marginBottom: 4, textAlign: 'center' },
+  exampleZh: { fontSize: 14, color: '#6b7280', textAlign: 'center', marginBottom: 8 },
+  exampleSpeaker: { marginTop: 8, alignSelf: 'center', padding: 8 },
+  judgmentSection: { paddingHorizontal: 16 },
+  roundLabel: { textAlign: 'center', fontSize: 12, marginBottom: 12 },
+  round2Card: { padding: 16, borderRadius: 16, marginBottom: 12 },
+  exampleLabel: { fontSize: 12, marginBottom: 8 },
+  round2ExampleJp: { fontSize: 16, marginBottom: 4 },
+  round2SpeakerContainer: { alignItems: 'flex-end', marginTop: 12 },
+  judgmentButtons: { flexDirection: 'row', gap: 12 },
+  knowButton: { flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  dontKnowButton: { flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  judgmentText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  nextButtonSection: { paddingHorizontal: 16, marginTop: 16, marginBottom: 16 },
+  nextButton: { paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  nextButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
 });
