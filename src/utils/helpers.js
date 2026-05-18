@@ -55,14 +55,24 @@ export const getToday = () => {
 };
 
 export const updateReviewInterval = (wordId, quality, userVocab) => {
+  const today = getToday();
+  const isNew = !userVocab[wordId];
   const vocab = userVocab[wordId] || {
     id: wordId,
     intervalDays: 1,
     easeFactor: 2.5,
     consecutiveCorrect: 0,
     isMastered: false,
-    nextReviewDate: getToday(),
+    nextReviewDate: today,
+    stability: 0,
+    lastReviewDate: '',
+    dueDate: today,
   };
+
+  // 清除 needsRelearning 标记（重新学习时）
+  if (vocab.needsRelearning) {
+    vocab.needsRelearning = false;
+  }
 
   if (quality >= 2) {
     vocab.consecutiveCorrect++;
@@ -79,14 +89,35 @@ export const updateReviewInterval = (wordId, quality, userVocab) => {
     }
 
     vocab.easeFactor = Math.max(1.3, vocab.easeFactor + (0.1 - (3 - quality) * (0.08 + (3 - quality) * 0.02)));
+
+    // 首次学习成功后，设置 dueDate 为明天
+    if (isNew || !vocab.lastReviewDate) {
+      vocab.stability = 0;
+      vocab.lastReviewDate = today;
+      const nextDate = new Date();
+      nextDate.setDate(nextDate.getDate() + 1);
+      vocab.dueDate = nextDate.toISOString().split('T')[0];
+      vocab.intervalDays = 1;
+    }
   } else {
     vocab.consecutiveCorrect = 0;
     vocab.intervalDays = 1;
+
+    // 即使答错也设置 initial dueDate
+    if (isNew || !vocab.lastReviewDate) {
+      const nextDate = new Date();
+      nextDate.setDate(nextDate.getDate() + 1);
+      vocab.dueDate = nextDate.toISOString().split('T')[0];
+      vocab.lastReviewDate = today;
+    }
   }
 
-  const nextDate = new Date();
-  nextDate.setDate(nextDate.getDate() + vocab.intervalDays);
-  vocab.nextReviewDate = nextDate.toISOString().split('T')[0];
+  if (!vocab.dueDate) {
+    const nextDate = new Date();
+    nextDate.setDate(nextDate.getDate() + vocab.intervalDays);
+    vocab.dueDate = nextDate.toISOString().split('T')[0];
+  }
+  vocab.nextReviewDate = vocab.dueDate;
 
   userVocab[wordId] = vocab;
   return userVocab;
@@ -132,4 +163,54 @@ export const shuffleArray = (array) => {
 export const getRandomWords = (words, count) => {
   const shuffled = shuffleArray(words);
   return shuffled.slice(0, count);
+};
+
+export const normalizeKana = (text) => {
+  return (text || '').trim();
+};
+
+export const updateReviewVocab = (wordId, result, userVocab) => {
+  const today = getToday();
+  const vocab = userVocab[wordId] || {
+    id: wordId,
+    intervalDays: 1,
+    easeFactor: 2.5,
+    consecutiveCorrect: 0,
+    isMastered: false,
+    nextReviewDate: today,
+    stability: 0,
+    lastReviewDate: '',
+    dueDate: today,
+  };
+
+  if (result === 'know') {
+    vocab.stability = Math.min(100, (vocab.stability || 0) + 20);
+    const interval = Math.max(1, Math.min(365, Math.round((vocab.stability || 0) / 10)));
+    const nextDate = new Date();
+    nextDate.setDate(nextDate.getDate() + interval);
+    vocab.dueDate = nextDate.toISOString().split('T')[0];
+    vocab.intervalDays = interval;
+    vocab.consecutiveCorrect = (vocab.consecutiveCorrect || 0) + 1;
+  } else if (result === 'fuzzy') {
+    vocab.stability = Math.min(100, (vocab.stability || 0) + 5);
+    const currentInterval = vocab.intervalDays || 1;
+    const nextInterval = Math.max(1, Math.round(currentInterval * 0.5));
+    const nextDate = new Date();
+    nextDate.setDate(nextDate.getDate() + nextInterval);
+    vocab.dueDate = nextDate.toISOString().split('T')[0];
+    vocab.intervalDays = nextInterval;
+  } else {
+    vocab.stability = 0;
+    vocab.intervalDays = 1;
+    const nextDate = new Date();
+    nextDate.setDate(nextDate.getDate() + 1);
+    vocab.dueDate = nextDate.toISOString().split('T')[0];
+    vocab.consecutiveCorrect = 0;
+  }
+
+  vocab.lastReviewDate = today;
+  vocab.nextReviewDate = vocab.dueDate;
+
+  userVocab[wordId] = vocab;
+  return userVocab;
 };

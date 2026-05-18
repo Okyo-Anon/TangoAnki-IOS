@@ -65,9 +65,9 @@ export default function LearningSettingsScreen({ navigation }) {
   const selectOption = (option) => {
     if (option.value === 'all' || option.value === 'mistakes') {
       updateSettings({ firstReviewDelay: option.value });
-    } else if (typeof option.value === 'number' && option.value <= 20) {
+    } else if (modalTitle === '每组学习单词量') {
       updateSettings({ studyWordsPerSession: option.value });
-    } else {
+    } else if (modalTitle === '每组复习单词量') {
       updateSettings({ reviewWordsPerSession: option.value });
     }
     setModalVisible(false);

@@ -18,6 +18,7 @@ import LearningSettingsScreen from './src/screens/LearningSettingsScreen';
 import AppearanceSettingsScreen from './src/screens/AppearanceSettingsScreen';
 import WordDetailScreen from './src/screens/WordDetailScreen';
 import ResultScreen from './src/screens/ResultScreen';
+import SpellingScreen from './src/screens/SpellingScreen';
 import TabBar from './src/components/TabBar';
 
 const Tab = createBottomTabNavigator();
@@ -119,6 +120,14 @@ export default function App() {
               component={WordDetailScreen}
               options={{
                 presentation: 'modal',
+                animation: 'slide_from_bottom',
+              }}
+            />
+            <Stack.Screen
+              name="Spelling"
+              component={SpellingScreen}
+              options={{
+                presentation: 'fullScreenModal',
                 animation: 'slide_from_bottom',
               }}
             />

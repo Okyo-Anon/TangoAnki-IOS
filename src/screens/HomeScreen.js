@@ -26,6 +26,9 @@ export default function HomeScreen({ navigation }) {
     masteredWordIds,
     getRemainingNewWordsCount,
     getTodayReviewWords,
+    getDueReviewWords,
+    generateReviewList,
+    todayReviewWords,
   } = useApp();
 
   const isDark = settings.theme === 'dark';
@@ -44,6 +47,12 @@ export default function HomeScreen({ navigation }) {
       setRandomWord(shuffled[0]);
     }
   }, [allWords]);
+
+  useEffect(() => {
+    if (allWords.length > 0 && userVocab) {
+      generateReviewList();
+    }
+  }, [allWords, userVocab]);
 
   useEffect(() => {
     if (searchTimeoutRef.current) {
@@ -76,33 +85,33 @@ export default function HomeScreen({ navigation }) {
   }, [searchQuery, allWords]);
 
   const handleStartLearn = () => {
-    const newWords = allWords.filter(w => !userVocab[w.id]);
+    const newWords = allWords.filter(w => !userVocab[w.id] || userVocab[w.id]?.needsRelearning);
     if (newWords.length === 0) {
       alert('所有单词都已学习完毕！');
       return;
     }
-    const wordsToLearn = shuffleArray(newWords).slice(0, settings.groupStudySize || 10);
+    const wordsToLearn = shuffleArray(newWords).slice(0, settings.studyWordsPerSession || 10);
     navigation.navigate('Learn', { words: wordsToLearn, mode: 'learn' });
   };
 
   const handleStartReview = () => {
-    const reviewWords = getTodayReviewWords();
+    const reviewWords = getDueReviewWords();
     if (reviewWords.length === 0) {
       alert('今日没有需要复习的单词！');
       return;
     }
-    const wordsToReview = shuffleArray(reviewWords).slice(0, settings.groupReviewSize || 20);
-    navigation.navigate('Learn', { words: wordsToReview, mode: 'review' });
+    const wordsToReview = shuffleArray(reviewWords).slice(0, settings.reviewWordsPerSession || 20);
+    navigation.navigate('Learn', { words: wordsToReview, mode: 'first_review' });
   };
 
-  const todayReviewCount = getTodayReviewWords().length;
+  const todayReviewCount = todayReviewWords.length;
   const newWordsRemaining = getRemainingNewWordsCount();
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.container}>
         {/* Header */}
-        <View style={[styles.header, { backgroundColor: colors.card }]}>
+        <View style={[styles.header, { backgroundColor: colors.background }]}>
           <TouchableOpacity
             style={styles.avatar}
             onPress={() => navigation.navigate('Profile')}
@@ -135,7 +144,7 @@ export default function HomeScreen({ navigation }) {
             {isSearching ? (
               <ActivityIndicator size="small" color={colors.primary} />
             ) : (
-              <TouchableOpacity onPress={() => setShowSearch(false)} activeOpacity={0.7}>
+              <TouchableOpacity onPress={() => { setShowSearch(false); setSearchQuery(''); setSearchResults([]); }} activeOpacity={0.7}>
                 <Ionicons name="close" size={24} color={colors.textSecondary} />
               </TouchableOpacity>
             )}
@@ -144,7 +153,7 @@ export default function HomeScreen({ navigation }) {
 
         {/* Search Results */}
         {searchResults.length > 0 && (
-          <ScrollView style={styles.searchResults}>
+          <ScrollView style={styles.searchResults} keyboardShouldPersistTaps="handled">
             {searchResults.map(word => (
               <TouchableOpacity
                 key={word.id}
@@ -236,6 +245,7 @@ export default function HomeScreen({ navigation }) {
                 activeOpacity={0.8}
               >
                 <Text style={styles.buttonText}>勉強</Text>
+                <Text style={styles.buttonCountInside}>剩余 {newWordsRemaining} 词</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.reviewButton, { borderColor: colors.primary }]}
@@ -243,6 +253,7 @@ export default function HomeScreen({ navigation }) {
                 activeOpacity={0.8}
               >
                 <Text style={[styles.reviewButtonText, { color: colors.primary }]}>復習</Text>
+                <Text style={[styles.reviewCountInside, { color: colors.primary }]}>今日 {todayReviewCount} 词</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -294,8 +305,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   searchResults: {
-    maxHeight: 300,
+    flex: 1,
     paddingHorizontal: 16,
+    marginTop: 12,
   },
   searchResultItem: {
     flexDirection: 'row',
@@ -404,6 +416,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
+  buttonCountInside: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 12,
+    marginTop: 2,
+  },
   reviewButton: {
     flex: 1,
     paddingVertical: 16,
@@ -414,5 +431,9 @@ const styles = StyleSheet.create({
   reviewButtonText: {
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  reviewCountInside: {
+    fontSize: 12,
+    marginTop: 2,
   },
 });

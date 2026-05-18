@@ -13,9 +13,9 @@ import { speakJapanese } from '../utils/helpers';
 
 export default function WordDetailScreen({ route, navigation }) {
   const { word } = route.params;
-  const { bookmarkedWords, toggleBookmark } = useApp();
+  const { bookmarkedWords, toggleBookmark, settings } = useApp();
 
-  const isDark = false;
+  const isDark = settings.theme === 'dark';
   const colors = getColors(isDark);
 
   const isBookmarked = bookmarkedWords.includes(word.id);
@@ -51,13 +51,13 @@ export default function WordDetailScreen({ route, navigation }) {
               <Text style={[styles.kanaText, { color: colors.textSecondary }]}>
                 {word.kana}
               </Text>
-              <Text style={[styles.pitchText, { color: colors.primary }]}>
+              <Text style={[styles.pitchText, { color: colors.primary, backgroundColor: colors.primaryLight }]}>
                 {word.pitch}
               </Text>
             </View>
 
             <TouchableOpacity
-              style={styles.speakerButton}
+              style={[styles.speakerButton, { backgroundColor: colors.primaryLight }]}
               onPress={() => speakJapanese(word.word)}
             >
               <Ionicons name="volume-high" size={28} color={colors.primary} />
@@ -97,7 +97,7 @@ export default function WordDetailScreen({ route, navigation }) {
                   </Text>
                 )}
                 <TouchableOpacity
-                  style={styles.exampleSpeaker}
+                  style={[styles.exampleSpeaker, { backgroundColor: colors.primaryLight }]}
                   onPress={() => speakJapanese(word.example)}
                 >
                   <Ionicons name="volume-high" size={20} color={colors.primary} />
@@ -156,7 +156,6 @@ const styles = StyleSheet.create({
   },
   pitchText: {
     fontSize: 14,
-    backgroundColor: '#eff6ff',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 10,
@@ -166,7 +165,6 @@ const styles = StyleSheet.create({
     top: 16,
     right: 16,
     padding: 8,
-    backgroundColor: '#eff6ff',
     borderRadius: 20,
   },
   meaningCard: {
@@ -191,7 +189,6 @@ const styles = StyleSheet.create({
   },
   meaning2Text: {
     fontSize: 14,
-    color: '#9ca3af',
   },
   exampleCard: {
     padding: 20,
@@ -210,14 +207,12 @@ const styles = StyleSheet.create({
   },
   exampleZh: {
     fontSize: 14,
-    color: '#6b7280',
   },
   exampleSpeaker: {
     position: 'absolute',
     right: 0,
     top: 0,
     padding: 8,
-    backgroundColor: '#eff6ff',
     borderRadius: 15,
   },
 });

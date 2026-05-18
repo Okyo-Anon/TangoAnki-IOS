@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { saveState, loadState, getToday, DEFAULT_SETTINGS, updateReviewInterval, shuffleArray } from '../utils/helpers';
+import { saveState, loadState, getToday, DEFAULT_SETTINGS, updateReviewInterval, updateReviewVocab, shuffleArray } from '../utils/helpers';
 
 const AppContext = createContext();
 
@@ -157,6 +157,9 @@ const appReducer = (state, action) => {
         currentSessionResult: { know: 0, fuzzy: 0, dontKnow: 0 },
       };
 
+    case 'SET_TODAY_REVIEW_WORDS':
+      return { ...state, todayReviewWords: action.payload };
+
     case 'LOGOUT':
       return {
         ...initialState,
@@ -279,15 +282,59 @@ export const AppProvider = ({ children }) => {
     dispatch({ type: 'UPDATE_USER_VOCAB', payload: newUserVocab });
   }, [state.userVocab]);
 
+  const updateUserReviewVocab = useCallback((wordId, result) => {
+    const newUserVocab = updateReviewVocab(wordId, result, { ...state.userVocab });
+    dispatch({ type: 'UPDATE_USER_VOCAB', payload: newUserVocab });
+  }, [state.userVocab]);
+
+  const getDueReviewWords = useCallback(() => {
+    const today = getToday();
+    return state.allWords.filter(w => {
+      const vocab = state.userVocab[w.id];
+      return vocab && vocab.dueDate && vocab.dueDate <= today && !vocab.isMastered;
+    }).sort((a, b) => {
+      const stabilityA = state.userVocab[a.id]?.stability || 0;
+      const stabilityB = state.userVocab[b.id]?.stability || 0;
+      return stabilityA - stabilityB;
+    });
+  }, [state.allWords, state.userVocab]);
+
+  const generateReviewList = useCallback(() => {
+    const reviewWords = getDueReviewWords();
+    dispatch({ type: 'SET_TODAY_REVIEW_WORDS', payload: reviewWords });
+    return reviewWords;
+  }, [getDueReviewWords]);
+
+  const moveToNewLearningQueue = useCallback((wordId) => {
+    const newUserVocab = { ...state.userVocab };
+    if (newUserVocab[wordId]) {
+      newUserVocab[wordId] = {
+        ...newUserVocab[wordId],
+        needsRelearning: true,
+        stability: 0,
+        lastReviewDate: getToday(),
+        dueDate: getToday(),
+      };
+      dispatch({ type: 'UPDATE_USER_VOCAB', payload: newUserVocab });
+    }
+  }, [state.userVocab]);
+
   const getRemainingNewWordsCount = useCallback(() => {
-    return state.allWords.filter(w => !state.userVocab[w.id]).length;
+    return state.allWords.filter(w => {
+      const vocab = state.userVocab[w.id];
+      return !vocab || vocab.needsRelearning;
+    }).length;
   }, [state.allWords, state.userVocab]);
 
   const getTodayReviewWords = useCallback(() => {
     const today = getToday();
     return state.allWords.filter(w => {
       const vocab = state.userVocab[w.id];
-      return vocab && vocab.nextReviewDate && vocab.nextReviewDate <= today && !vocab.isMastered;
+      return vocab && vocab.dueDate && vocab.dueDate <= today && !vocab.isMastered;
+    }).sort((a, b) => {
+      const stabilityA = state.userVocab[a.id]?.stability || 0;
+      const stabilityB = state.userVocab[b.id]?.stability || 0;
+      return stabilityA - stabilityB;
     });
   }, [state.allWords, state.userVocab]);
 
@@ -304,6 +351,10 @@ export const AppProvider = ({ children }) => {
     getWordProgress,
     setWordProgress,
     updateUserVocab,
+    updateUserReviewVocab,
+    getDueReviewWords,
+    generateReviewList,
+    moveToNewLearningQueue,
     getRemainingNewWordsCount,
     getTodayReviewWords,
   };

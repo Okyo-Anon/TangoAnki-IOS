@@ -11,14 +11,20 @@ import { useApp } from '../context/AppContext';
 import { getColors } from '../utils/colors';
 
 export default function ResultScreen({ route, navigation }) {
-  const { total, know = 0, fuzzy = 0, dontKnow = 0 } = route.params || {};
-  const { streak } = useApp();
+  const { total, know = 0, fuzzy = 0, dontKnow = 0, words = [] } = route.params || {};
+  const { streak, settings } = useApp();
 
-  const isDark = false;
+  const isDark = settings.theme === 'dark';
   const colors = getColors(isDark);
 
   const expGained = know * 3;
   const goldGained = know * 2;
+
+  const handleSpellingTest = () => {
+    if (words && words.length > 0) {
+      navigation.navigate('Spelling', { words });
+    }
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.primaryLight }]}>
@@ -114,6 +120,15 @@ export default function ResultScreen({ route, navigation }) {
 
           {/* Buttons */}
           <View style={styles.buttons}>
+            {words && words.length > 0 && (
+              <TouchableOpacity
+                style={[styles.secondaryButton, { borderColor: colors.primary, marginBottom: 12 }]}
+                onPress={handleSpellingTest}
+              >
+                <Ionicons name="create-outline" size={20} color={colors.primary} />
+                <Text style={[styles.secondaryButtonText, { color: colors.primary }]}>拼写测试</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
               style={[styles.primaryButton, { backgroundColor: colors.primary }]}
               onPress={() => navigation.navigate('Home')}
@@ -233,6 +248,19 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: '#fff',
     fontSize: 18,
+    fontWeight: 'bold',
+  },
+  secondaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 16,
+    borderWidth: 2,
+  },
+  secondaryButtonText: {
+    fontSize: 16,
     fontWeight: 'bold',
   },
 });
