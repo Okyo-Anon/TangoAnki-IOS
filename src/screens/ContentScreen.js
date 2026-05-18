@@ -42,7 +42,7 @@ export default function ContentScreen({ navigation }) {
             }}
           >
             <View style={styles.menuLeft}>
-              <Text style={styles.menuIcon}>📖</Text>
+              <Ionicons name="book-outline" size={20} color={colors.textSecondary} />
               <Text style={[styles.menuLabel, { color: colors.text }]}>
                 正在学习的单词
               </Text>
@@ -54,7 +54,7 @@ export default function ContentScreen({ navigation }) {
 
           <TouchableOpacity style={styles.menuItem}>
             <View style={styles.menuLeft}>
-              <Text style={styles.menuIcon}>🕒</Text>
+              <Ionicons name="time-outline" size={20} color={colors.textSecondary} />
               <Text style={[styles.menuLabel, { color: colors.text }]}>最近学习</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
@@ -64,7 +64,7 @@ export default function ContentScreen({ navigation }) {
 
           <TouchableOpacity style={styles.menuItem}>
             <View style={styles.menuLeft}>
-              <Text style={styles.menuIcon}>📚</Text>
+              <Ionicons name="library-outline" size={20} color={colors.textSecondary} />
               <Text style={[styles.menuLabel, { color: colors.text }]}>
                 全部学习 ({learningWords.length})
               </Text>
@@ -82,7 +82,7 @@ export default function ContentScreen({ navigation }) {
             }}
           >
             <View style={styles.menuLeft}>
-              <Text style={styles.menuIcon}>📒</Text>
+              <Ionicons name="bookmark-outline" size={20} color={colors.textSecondary} />
               <Text style={[styles.menuLabel, { color: colors.text }]}>
                 单词本 ({bookmarkedWordList.length})
               </Text>
@@ -94,7 +94,7 @@ export default function ContentScreen({ navigation }) {
 
           <TouchableOpacity style={styles.menuItem}>
             <View style={styles.menuLeft}>
-              <Text style={styles.menuIcon}>📝</Text>
+              <Ionicons name="document-text-outline" size={20} color={colors.textSecondary} />
               <Text style={[styles.menuLabel, { color: colors.text }]}>例句库</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
@@ -104,7 +104,7 @@ export default function ContentScreen({ navigation }) {
 
           <TouchableOpacity style={styles.menuItem}>
             <View style={styles.menuLeft}>
-              <Text style={styles.menuIcon}>✏️</Text>
+              <Ionicons name="create-outline" size={20} color={colors.textSecondary} />
               <Text style={[styles.menuLabel, { color: colors.text }]}>笔记</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
@@ -142,6 +142,7 @@ const styles = StyleSheet.create({
   menuLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
   },
   menuIcon: {
     fontSize: 18,

@@ -20,6 +20,7 @@ import WordDetailScreen from './src/screens/WordDetailScreen';
 import ResultScreen from './src/screens/ResultScreen';
 import SpellingScreen from './src/screens/SpellingScreen';
 import TabBar from './src/components/TabBar';
+import FloatingBottomTabBar from './src/components/FloatingBottomTabBar';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -27,7 +28,7 @@ const Stack = createNativeStackNavigator();
 function MainTabs() {
   return (
     <Tab.Navigator
-      tabBar={props => <TabBar {...props} />}
+      tabBar={props => <FloatingBottomTabBar {...props} />}
       screenOptions={{
         headerShown: false,
       }}

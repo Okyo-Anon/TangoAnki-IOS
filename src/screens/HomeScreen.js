@@ -244,7 +244,7 @@ export default function HomeScreen({ navigation }) {
                 onPress={handleStartLearn}
                 activeOpacity={0.8}
               >
-                <Text style={styles.buttonText}>勉強</Text>
+                <Text style={styles.buttonText}>覚える</Text>
                 <Text style={styles.buttonCountInside}>剩余 {newWordsRemaining} 词</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -415,6 +415,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
+    includeFontPadding: false,
   },
   buttonCountInside: {
     color: 'rgba(255,255,255,0.8)',
@@ -431,9 +432,11 @@ const styles = StyleSheet.create({
   reviewButtonText: {
     fontSize: 18,
     fontWeight: 'bold',
+    includeFontPadding: false,
   },
   reviewCountInside: {
     fontSize: 12,
     marginTop: 2,
+    includeFontPadding: false,
   },
 });

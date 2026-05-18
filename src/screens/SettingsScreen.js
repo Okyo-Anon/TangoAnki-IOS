@@ -83,7 +83,7 @@ export default function SettingsScreen({ navigation }) {
         <View style={[styles.section, { backgroundColor: colors.card }]}>
           <TouchableOpacity style={styles.settingRow}>
             <View style={styles.settingLeft}>
-              <Text style={styles.settingIcon}>👤</Text>
+              <Ionicons name="person-outline" size={20} color={colors.textSecondary} />
               <Text style={[styles.settingLabel, { color: colors.text }]}>账号信息</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
@@ -93,7 +93,7 @@ export default function SettingsScreen({ navigation }) {
         <View style={[styles.section, { backgroundColor: colors.card }]}>
           <TouchableOpacity style={styles.settingRow}>
             <View style={styles.settingLeft}>
-              <Text style={styles.settingIcon}>💬</Text>
+              <Ionicons name="chatbubble-outline" size={20} color={colors.textSecondary} />
               <Text style={[styles.settingLabel, { color: colors.text }]}>帮助与反馈</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
@@ -103,7 +103,7 @@ export default function SettingsScreen({ navigation }) {
         <View style={[styles.section, { backgroundColor: colors.card }]}>
           <TouchableOpacity style={styles.settingRowTop}>
             <View style={styles.settingLeft}>
-              <Text style={styles.settingIcon}>📄</Text>
+              <Ionicons name="document-text-outline" size={20} color={colors.textSecondary} />
               <Text style={[styles.settingLabel, { color: colors.text }]}>服务条款</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
@@ -113,7 +113,7 @@ export default function SettingsScreen({ navigation }) {
 
           <TouchableOpacity style={styles.settingRowMiddle}>
             <View style={styles.settingLeft}>
-              <Text style={styles.settingIcon}>🔒</Text>
+              <Ionicons name="lock-closed-outline" size={20} color={colors.textSecondary} />
               <Text style={[styles.settingLabel, { color: colors.text }]}>隐私协议</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
@@ -123,7 +123,7 @@ export default function SettingsScreen({ navigation }) {
 
           <TouchableOpacity style={styles.settingRowMiddle}>
             <View style={styles.settingLeft}>
-              <Text style={styles.settingIcon}>👶</Text>
+              <Ionicons name="people-outline" size={20} color={colors.textSecondary} />
               <Text style={[styles.settingLabel, { color: colors.text }]}>儿童信息保护</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
@@ -133,7 +133,7 @@ export default function SettingsScreen({ navigation }) {
 
           <TouchableOpacity style={styles.settingRowMiddle}>
             <View style={styles.settingLeft}>
-              <Text style={styles.settingIcon}>📋</Text>
+              <Ionicons name="clipboard-outline" size={20} color={colors.textSecondary} />
               <Text style={[styles.settingLabel, { color: colors.text }]}>个人信息收集清单</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
@@ -143,7 +143,7 @@ export default function SettingsScreen({ navigation }) {
 
           <TouchableOpacity style={styles.settingRowMiddle}>
             <View style={styles.settingLeft}>
-              <Text style={styles.settingIcon}>🔗</Text>
+              <Ionicons name="share-social-outline" size={20} color={colors.textSecondary} />
               <Text style={[styles.settingLabel, { color: colors.text }]}>第三方信息数据共享</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
@@ -153,7 +153,7 @@ export default function SettingsScreen({ navigation }) {
 
           <TouchableOpacity style={styles.settingRowMiddle}>
             <View style={styles.settingLeft}>
-              <Text style={styles.settingIcon}>🔐</Text>
+              <Ionicons name="key-outline" size={20} color={colors.textSecondary} />
               <Text style={[styles.settingLabel, { color: colors.text }]}>应用权限说明</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
@@ -163,7 +163,7 @@ export default function SettingsScreen({ navigation }) {
 
           <TouchableOpacity style={styles.settingRowMiddle}>
             <View style={styles.settingLeft}>
-              <Text style={styles.settingIcon}>⚙️</Text>
+              <Ionicons name="settings-outline" size={20} color={colors.textSecondary} />
               <Text style={[styles.settingLabel, { color: colors.text }]}>应用权限管理</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
@@ -173,7 +173,7 @@ export default function SettingsScreen({ navigation }) {
 
           <TouchableOpacity style={styles.settingRowMiddle}>
             <View style={styles.settingLeft}>
-              <Text style={styles.settingIcon}>📢</Text>
+              <Ionicons name="megaphone-outline" size={20} color={colors.textSecondary} />
               <Text style={[styles.settingLabel, { color: colors.text }]}>个性化推荐</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
@@ -183,7 +183,7 @@ export default function SettingsScreen({ navigation }) {
 
           <TouchableOpacity style={styles.settingRowBottom}>
             <View style={styles.settingLeft}>
-              <Text style={styles.settingIcon}>🌐</Text>
+              <Ionicons name="globe-outline" size={20} color={colors.textSecondary} />
               <Text style={[styles.settingLabel, { color: colors.text }]}>ICP备案</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
@@ -193,7 +193,7 @@ export default function SettingsScreen({ navigation }) {
         <View style={[styles.section, { backgroundColor: colors.card }]}>
           <TouchableOpacity style={styles.settingRowTop} onPress={handleClearCache}>
             <View style={styles.settingLeft}>
-              <Text style={styles.settingIcon}>🗑️</Text>
+              <Ionicons name="trash-outline" size={20} color={colors.textSecondary} />
               <Text style={[styles.settingLabel, { color: colors.text }]}>清除缓存</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
@@ -203,7 +203,7 @@ export default function SettingsScreen({ navigation }) {
 
           <TouchableOpacity style={styles.settingRowBottom} onPress={handleAccountCancel}>
             <View style={styles.settingLeft}>
-              <Text style={styles.settingIcon}>⚠️</Text>
+              <Ionicons name="warning-outline" size={20} color={colors.danger} />
               <Text style={[styles.settingLabel, { color: colors.danger }]}>注销账号</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />

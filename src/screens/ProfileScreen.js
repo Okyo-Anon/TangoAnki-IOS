@@ -93,39 +93,23 @@ export default function ProfileScreen({ navigation }) {
         <View style={[styles.achievementCard, { backgroundColor: colors.card }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>成就徽章</Text>
           <View style={styles.badges}>
-            <View style={styles.badgeItem}>
-              <View
-                style={[
-                  styles.badgeCircle,
-                  { backgroundColor: '#fb923c' },
-                ]}
-              >
-                <Text style={styles.badgeEmoji}>🌅</Text>
+            <View style={[styles.badgeItem, { opacity: 1 }]}>
+              <View style={[styles.badgeIconContainer, { backgroundColor: 'rgba(0,0,0,0.03)', borderColor: colors.border }]}>
+                <Ionicons name="sunny-outline" size={28} color={colors.primary} />
               </View>
-              <Text style={[styles.badgeLabel, { color: colors.textSecondary }]}>
-                早起打卡
-              </Text>
+              <Text style={[styles.badgeLabel, { color: colors.text }]}>早起打卡</Text>
             </View>
-            <View style={styles.badgeItem}>
-              <View
-                style={[
-                  styles.badgeCircle,
-                  { backgroundColor: '#22c55e' },
-                ]}
-              >
-                <Text style={styles.badgeEmoji}>🗡️</Text>
+            <View style={[styles.badgeItem, { opacity: 1 }]}>
+              <View style={[styles.badgeIconContainer, { backgroundColor: 'rgba(0,0,0,0.03)', borderColor: colors.border }]}>
+                <Ionicons name="ribbon-outline" size={28} color={colors.primary} />
               </View>
-              <Text style={[styles.badgeLabel, { color: colors.textSecondary }]}>
-                百词斩
-              </Text>
+              <Text style={[styles.badgeLabel, { color: colors.text }]}>百词斩</Text>
             </View>
-            <View style={[styles.badgeItem, { opacity: 0.4 }]}>
-              <View style={[styles.badgeCircle, { backgroundColor: '#e5e7eb' }]}>
-                <Text style={styles.badgeEmoji}>🔒</Text>
+            <View style={[styles.badgeItem, { opacity: 0.5 }]}>
+              <View style={[styles.badgeIconContainer, { backgroundColor: 'rgba(0,0,0,0.03)', borderColor: colors.border }]}>
+                <Ionicons name="lock-closed-outline" size={28} color={colors.textTertiary} />
               </View>
-              <Text style={[styles.badgeLabel, { color: colors.textTertiary }]}>
-                未解锁
-              </Text>
+              <Text style={[styles.badgeLabel, { color: colors.textTertiary }]}>未解锁</Text>
             </View>
           </View>
         </View>
@@ -137,7 +121,7 @@ export default function ProfileScreen({ navigation }) {
             onPress={() => navigation.navigate('LearningSettings')}
           >
             <View style={styles.settingLeft}>
-              <Text style={styles.settingIcon}>📖</Text>
+              <Ionicons name="book-outline" size={20} color={colors.textSecondary} />
               <Text style={[styles.settingLabel, { color: colors.text }]}>学习设置</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
@@ -150,7 +134,7 @@ export default function ProfileScreen({ navigation }) {
             onPress={() => navigation.navigate('AppearanceSettings')}
           >
             <View style={styles.settingLeft}>
-              <Text style={styles.settingIcon}>🎨</Text>
+              <Ionicons name="color-palette-outline" size={20} color={colors.textSecondary} />
               <Text style={[styles.settingLabel, { color: colors.text }]}>外观</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
@@ -163,7 +147,7 @@ export default function ProfileScreen({ navigation }) {
             onPress={() => navigation.navigate('Settings')}
           >
             <View style={styles.settingLeft}>
-              <Text style={styles.settingIcon}>⚙️</Text>
+              <Ionicons name="settings-outline" size={20} color={colors.textSecondary} />
               <Text style={[styles.settingLabel, { color: colors.text }]}>更多设置</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
@@ -274,20 +258,24 @@ const styles = StyleSheet.create({
   },
   badgeItem: {
     alignItems: 'center',
+    gap: 8,
   },
-  badgeCircle: {
+  badgeIconContainer: {
     width: 56,
     height: 56,
-    borderRadius: 28,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
-  },
-  badgeEmoji: {
-    fontSize: 24,
+    borderWidth: 0.5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   badgeLabel: {
     fontSize: 12,
+    fontWeight: '500',
   },
   settingsCard: {
     marginHorizontal: 16,
@@ -304,6 +292,7 @@ const styles = StyleSheet.create({
   settingLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
   },
   settingIcon: {
     fontSize: 18,

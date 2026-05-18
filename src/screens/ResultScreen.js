@@ -42,7 +42,7 @@ export default function ResultScreen({ route, navigation }) {
         {/* Content */}
         <View style={styles.content}>
           {/* Celebration */}
-          <Text style={styles.celebrationEmoji}>🎉</Text>
+          <Ionicons name="happy-outline" size={64} color={colors.primary} style={styles.celebrationIcon} />
           <Text style={[styles.congratsText, { color: colors.text }]}>
             学习完成！
           </Text>
@@ -88,7 +88,7 @@ export default function ResultScreen({ route, navigation }) {
           {/* Streak Card */}
           <View style={[styles.streakCard, { backgroundColor: colors.card }]}>
             <View style={styles.streakRow}>
-              <Text style={styles.streakEmoji}>🔥</Text>
+              <Ionicons name="flame-outline" size={24} color={colors.primary} />
               <Text style={[styles.streakText, { color: colors.text }]}>
                 连续 {streak} 天
               </Text>
@@ -159,8 +159,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     alignItems: 'center',
   },
-  celebrationEmoji: {
-    fontSize: 64,
+  celebrationIcon: {
     marginBottom: 16,
   },
   congratsText: {
@@ -200,9 +199,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-  },
-  streakEmoji: {
-    fontSize: 24,
   },
   streakText: {
     fontSize: 18,

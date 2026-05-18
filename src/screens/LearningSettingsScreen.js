@@ -106,7 +106,7 @@ export default function LearningSettingsScreen({ navigation }) {
         >
           <View style={styles.settingRow}>
             <View style={styles.settingLeft}>
-              <Text style={styles.settingIcon}>⏰</Text>
+              <Ionicons name="time-outline" size={20} color={colors.textSecondary} />
               <Text style={[styles.settingLabel, { color: colors.text }]}>新学单词首次复习时间</Text>
             </View>
             <View style={styles.settingRight}>
@@ -124,7 +124,7 @@ export default function LearningSettingsScreen({ navigation }) {
             onPress={() => openModal('每组学习单词量', groupStudyOptions, settings.studyWordsPerSession)}
           >
             <View style={styles.settingLeft}>
-              <Text style={styles.settingIcon}>📚</Text>
+              <Ionicons name="library-outline" size={20} color={colors.textSecondary} />
               <Text style={[styles.settingLabel, { color: colors.text }]}>每组学习单词量</Text>
             </View>
             <View style={styles.settingRight}>
@@ -142,7 +142,7 @@ export default function LearningSettingsScreen({ navigation }) {
             onPress={() => openModal('每组复习单词量', groupReviewOptions, settings.reviewWordsPerSession)}
           >
             <View style={styles.settingLeft}>
-              <Text style={styles.settingIcon}>🔄</Text>
+              <Ionicons name="sync-outline" size={20} color={colors.textSecondary} />
               <Text style={[styles.settingLabel, { color: colors.text }]}>每组复习单词量</Text>
             </View>
             <View style={styles.settingRight}>
@@ -157,7 +157,7 @@ export default function LearningSettingsScreen({ navigation }) {
         <View style={[styles.section, { backgroundColor: colors.card }]}>
           <TouchableOpacity style={styles.settingRowTop}>
             <View style={styles.settingLeft}>
-              <Text style={styles.settingIcon}>🔔</Text>
+              <Ionicons name="notifications-outline" size={20} color={colors.textSecondary} />
               <Text style={[styles.settingLabel, { color: colors.text }]}>学习提醒</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
@@ -167,7 +167,7 @@ export default function LearningSettingsScreen({ navigation }) {
 
           <TouchableOpacity style={styles.settingRowBottom}>
             <View style={styles.settingLeft}>
-              <Text style={styles.settingIcon}>🔃</Text>
+              <Ionicons name="server-outline" size={20} color={colors.textSecondary} />
               <Text style={[styles.settingLabel, { color: colors.text }]}>同步学习数据</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
