@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+﻿﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,11 +9,48 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
 import { getColors } from '../utils/colors';
 import { speakJapanese, shuffleArray } from '../utils/helpers';
+
+const ScaleTouchable = ({ children, onPress, disabled, style, activeOpacity = 0.7, ...props }) => {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.96,
+      useNativeDriver: true,
+      speed: 30,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 30,
+    }).start();
+  };
+
+  return (
+    <TouchableOpacity
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      onPress={onPress}
+      disabled={disabled}
+      activeOpacity={activeOpacity}
+      style={style}
+      {...props}
+    >
+      <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+        {children}
+      </Animated.View>
+    </TouchableOpacity>
+  );
+};
 
 export default function LearnScreen({ route, navigation }) {
   const { words: initialWords, mode = 'learn' } = route.params;
@@ -67,6 +104,9 @@ export default function LearnScreen({ route, navigation }) {
 
   const answerDelayRef = useRef(null);
   const spellingTimeoutRef = useRef(null);
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const cardSlideAnim = useRef(new Animated.Value(300)).current;
 
   const currentWord = learnQueue[currentIndex];
 
@@ -108,6 +148,19 @@ export default function LearnScreen({ route, navigation }) {
       setIsCorrect(null);
     }
   }, [currentIndex, currentWord]);
+
+  useEffect(() => {
+    if (showAnswer || showMeaningCard) {
+      Animated.spring(cardSlideAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 80,
+        friction: 12,
+      }).start();
+    } else {
+      cardSlideAnim.setValue(300);
+    }
+  }, [showAnswer, showMeaningCard]);
 
   const generateOptionsForWord = useCallback((word) => {
     if (!word) return;
@@ -230,54 +283,87 @@ export default function LearnScreen({ route, navigation }) {
     updateUserVocab(wordId, quality);
   };
 
+  const animateWordTransition = (callback) => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: -30,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      callback();
+      fadeAnim.setValue(0);
+      slideAnim.setValue(30);
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    });
+  };
+
   const handleNextWord = () => {
     if (answerDelayRef.current) clearTimeout(answerDelayRef.current);
     if (!currentWord) return;
 
-    const progress = getWordProgress(currentWord.id) || { currentRound: 1, consecutiveCorrect: 0 };
-    const isRoundOne = waitingForNext;
+    animateWordTransition(() => {
+      const progress = getWordProgress(currentWord.id) || { currentRound: 1, consecutiveCorrect: 0 };
+      const isRoundOne = waitingForNext;
 
-    if (isRoundOne) {
-      if (progress.consecutiveCorrect >= 1) {
-        progress.currentRound = 2;
+      if (isRoundOne) {
+        if (progress.consecutiveCorrect >= 1) {
+          progress.currentRound = 2;
+        }
+        setWordProgress(currentWord.id, progress);
       }
-      setWordProgress(currentWord.id, progress);
-    }
 
-    let newQueue;
-    let newIndex = currentIndex;
-    const isMastered = progress.consecutiveCorrect >= 3 && progress.currentRound >= 4;
+      let newQueue;
+      let newIndex = currentIndex;
+      const isMastered = progress.consecutiveCorrect >= 3 && progress.currentRound >= 4;
 
-    if (isMastered) {
-      newQueue = learnQueue.filter((_, idx) => idx !== currentIndex);
-      setCompletedCount(prev => prev + 1);
-      newIndex = Math.min(currentIndex, newQueue.length - 1);
-    } else {
-      newQueue = [
-        ...learnQueue.slice(0, currentIndex),
-        ...learnQueue.slice(currentIndex + 1),
-        learnQueue[currentIndex],
-      ];
-    }
+      if (isMastered) {
+        newQueue = learnQueue.filter((_, idx) => idx !== currentIndex);
+        setCompletedCount(prev => prev + 1);
+        newIndex = Math.min(currentIndex, newQueue.length - 1);
+      } else {
+        newQueue = [
+          ...learnQueue.slice(0, currentIndex),
+          ...learnQueue.slice(currentIndex + 1),
+          learnQueue[currentIndex],
+        ];
+      }
 
-    setShowAnswer(false);
-    setWaitingForNext(false);
-    setShowMeaningCard(false);
-    setOptionsDisabled(false);
-    setSelectedOption(null);
-    setIsCorrect(null);
+      setShowAnswer(false);
+      setWaitingForNext(false);
+      setShowMeaningCard(false);
+      setOptionsDisabled(false);
+      setSelectedOption(null);
+      setIsCorrect(null);
 
-    if (newQueue.length === 0) {
-      finishSession();
-      navigation.replace('Result', {
-        total: initialCount,
-        completed: completedCount + (isMastered ? 1 : 0),
-        words: initialWords,
-      });
-    } else {
-      setLearnQueue(newQueue);
-      setCurrentIndex(newIndex);
-    }
+      if (newQueue.length === 0) {
+        finishSession();
+        navigation.replace('Result', {
+          total: initialCount,
+          completed: completedCount + (isMastered ? 1 : 0),
+          words: initialWords,
+        });
+      } else {
+        setLearnQueue(newQueue);
+        setCurrentIndex(newIndex);
+      }
+    });
   };
 
   const handleClose = () => navigation.goBack();
@@ -417,7 +503,10 @@ export default function LearnScreen({ route, navigation }) {
   const currentRound = currentWord ? (getWordProgress(currentWord.id)?.currentRound || 1) : 1;
 
   const renderMeaningCard = () => (
-    <ScrollView style={styles.meaningSection}>
+    <Animated.ScrollView
+      style={[styles.meaningSection, { transform: [{ translateY: cardSlideAnim }] }]}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={[styles.meaningCard, { backgroundColor: colors.card }]}>
         <Text style={[styles.typeTag, { color: colors.primary, backgroundColor: colors.primaryLight }]}>
           {currentWord?.type}
@@ -438,7 +527,7 @@ export default function LearnScreen({ route, navigation }) {
           </View>
         )}
       </View>
-    </ScrollView>
+    </Animated.ScrollView>
   );
 
   // 学习完成界面
@@ -447,12 +536,12 @@ export default function LearnScreen({ route, navigation }) {
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.centered}>
           <Text style={[styles.completeText, { color: colors.text }]}>学习完成！</Text>
-          <TouchableOpacity
+          <ScaleTouchable
             style={[styles.spellingButton, { backgroundColor: colors.primary }]}
             onPress={startSpellingTest}
           >
             <Text style={styles.spellingButtonText}>开始拼写测试</Text>
-          </TouchableOpacity>
+          </ScaleTouchable>
         </View>
       </SafeAreaView>
     );
@@ -512,13 +601,13 @@ export default function LearnScreen({ route, navigation }) {
             )}
           </View>
 
-          <TouchableOpacity
+          <ScaleTouchable
             style={[styles.spellingSubmitButton, { backgroundColor: colors.primary }]}
             onPress={handleSpellingSubmit}
             disabled={spellingResult !== null}
           >
             <Text style={styles.spellingSubmitText}>确认</Text>
-          </TouchableOpacity>
+          </ScaleTouchable>
         </KeyboardAvoidingView>
       </SafeAreaView>
     );
@@ -535,11 +624,6 @@ export default function LearnScreen({ route, navigation }) {
           </TouchableOpacity>
           {!isFinalReview && !isReviewMode && (
             <>
-              <View style={styles.roundIndicator}>
-                {[1, 2, 3].map(round => (
-                  <View key={round} style={[styles.roundDot, { backgroundColor: currentRound >= round ? colors.primary : colors.textTertiary }]} />
-                ))}
-              </View>
               <Text style={[styles.countText, { color: colors.textSecondary }]}>{completedCount}/{initialCount}</Text>
               <View style={styles.progressBar}>
                 <View style={[styles.progressFill, { width: `${progress}%`, backgroundColor: colors.primary }]} />
@@ -591,8 +675,8 @@ export default function LearnScreen({ route, navigation }) {
                 {reviewCurrentWord.example && (
                   <View style={[styles.round2Card, { backgroundColor: colors.card, marginHorizontal: 16 }]}>
                     <Text style={[styles.exampleLabel, { color: colors.textSecondary }]}>例句：</Text>
-                    <Text style={[styles.round2ExampleJp, { color: colors.text }]}>{reviewCurrentWord.example}</Text>
-                    <View style={styles.round2SpeakerContainer}>
+                    <View style={styles.exampleRow}>
+                      <Text style={[styles.round2ExampleJp, { color: colors.text }]}>{reviewCurrentWord.example}</Text>
                       <TouchableOpacity onPress={() => speakJapanese(reviewCurrentWord.example)}>
                         <Ionicons name="volume-high" size={24} color={colors.primary} />
                       </TouchableOpacity>
@@ -620,24 +704,24 @@ export default function LearnScreen({ route, navigation }) {
                 {!reviewShowMeaning && !reviewJudged && (
                   <View style={styles.judgmentSection}>
                     <View style={styles.judgmentButtons}>
-                      <TouchableOpacity style={[styles.knowButton, { backgroundColor: colors.success }]} onPress={() => handleFirstReviewJudgment('know')}>
+                      <ScaleTouchable style={[styles.knowButton, { backgroundColor: colors.success }]} onPress={() => handleFirstReviewJudgment('know')}>
                         <Text style={styles.judgmentText}>认识</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={[styles.fuzzyButton, { backgroundColor: '#f59e0b' }]} onPress={() => handleFirstReviewJudgment('fuzzy')}>
+                      </ScaleTouchable>
+                      <ScaleTouchable style={[styles.fuzzyButton, { backgroundColor: '#f59e0b' }]} onPress={() => handleFirstReviewJudgment('fuzzy')}>
                         <Text style={styles.judgmentText}>模糊</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={[styles.dontKnowButton, { backgroundColor: colors.danger }]} onPress={() => handleFirstReviewJudgment('forget')}>
+                      </ScaleTouchable>
+                      <ScaleTouchable style={[styles.dontKnowButton, { backgroundColor: colors.danger }]} onPress={() => handleFirstReviewJudgment('forget')}>
                         <Text style={styles.judgmentText}>忘记</Text>
-                      </TouchableOpacity>
+                      </ScaleTouchable>
                     </View>
                   </View>
                 )}
 
                 {reviewShowMeaning && (
                   <View style={styles.nextButtonSection}>
-                    <TouchableOpacity style={[styles.nextButton, { backgroundColor: colors.primary }]} onPress={handleReviewNextWord}>
+                    <ScaleTouchable style={[styles.nextButton, { backgroundColor: colors.primary }]} onPress={handleReviewNextWord}>
                       <Text style={styles.nextButtonText}>下一词</Text>
-                    </TouchableOpacity>
+                    </ScaleTouchable>
                   </View>
                 )}
               </>
@@ -653,10 +737,10 @@ export default function LearnScreen({ route, navigation }) {
                       <Text style={[styles.pitchText, { color: colors.primary }]}>{reviewCurrentWord.pitch}</Text>
                     </View>
                     {reviewCurrentWord.example && (
-                      <View style={[styles.round2Card, { backgroundColor: colors.card, marginTop: 12, alignSelf: 'stretch', marginHorizontal: 16 }]}>
+                      <View style={[styles.round2Card, { backgroundColor: colors.card, marginTop: 12, marginHorizontal: 16 }]}>
                         <Text style={[styles.exampleLabel, { color: colors.textSecondary }]}>例句：</Text>
-                        <Text style={[styles.round2ExampleJp, { color: colors.text }]}>{reviewCurrentWord.example}</Text>
-                        <View style={styles.round2SpeakerContainer}>
+                        <View style={styles.exampleRow}>
+                          <Text style={[styles.round2ExampleJp, { color: colors.text }]}>{reviewCurrentWord.example}</Text>
                           <TouchableOpacity onPress={() => speakJapanese(reviewCurrentWord.example)}>
                             <Ionicons name="volume-high" size={24} color={colors.primary} />
                           </TouchableOpacity>
@@ -680,12 +764,12 @@ export default function LearnScreen({ route, navigation }) {
 
                 <View style={styles.judgmentSection}>
                   <View style={styles.judgmentButtons}>
-                    <TouchableOpacity style={[styles.knowButton, { backgroundColor: colors.success }]} onPress={() => handleFinalReviewJudgment(true)}>
+                    <ScaleTouchable style={[styles.knowButton, { backgroundColor: colors.success }]} onPress={() => handleFinalReviewJudgment(true)}>
                       <Text style={styles.judgmentText}>认识</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.dontKnowButton, { backgroundColor: colors.danger }]} onPress={() => handleFinalReviewJudgment(false)}>
+                    </ScaleTouchable>
+                    <ScaleTouchable style={[styles.dontKnowButton, { backgroundColor: colors.danger }]} onPress={() => handleFinalReviewJudgment(false)}>
                       <Text style={styles.judgmentText}>忘记</Text>
-                    </TouchableOpacity>
+                    </ScaleTouchable>
                   </View>
                 </View>
               </>
@@ -698,50 +782,57 @@ export default function LearnScreen({ route, navigation }) {
         ) : (
           <>
         {/* 单词展示区 */}
-        <View style={styles.wordSection}>
-          <Text style={[styles.wordText, { color: colors.text }]}>{currentWord?.word}</Text>
-          <View style={styles.wordMeta}>
-            <Text style={[styles.kanaText, { color: colors.textSecondary }]}>{currentWord?.kana}</Text>
-            <Text style={[styles.pitchText, { color: colors.primary }]}>{currentWord?.pitch}</Text>
+        <Animated.View style={[styles.wordSection, { opacity: fadeAnim, transform: [{ translateX: slideAnim }] }]}>
+          <View style={styles.wordMain}>
+            <View style={styles.wordLeft}>
+              <View style={styles.wordRow}>
+                <Text style={[styles.wordText, { color: colors.text }]}>{currentWord?.word}</Text>
+                <View style={styles.roundIndicatorInline}>
+                  {[1, 2, 3].map(round => (
+                    <View key={round} style={[styles.roundDotInline, { backgroundColor: currentRound >= round ? colors.success : colors.textTertiary }]} />
+                  ))}
+                </View>
+              </View>
+              <View style={styles.wordMeta}>
+                <Text style={[styles.kanaText, { color: colors.textSecondary }]}>{currentWord?.kana}</Text>
+                <Text style={[styles.pitchText, { color: colors.primary }]}>{currentWord?.pitch}</Text>
+              </View>
+              <TouchableOpacity style={styles.speakerButton} onPress={handlePronounce}>
+                <Ionicons name="volume-high" size={28} color={colors.primary} />
+              </TouchableOpacity>
+            </View>
           </View>
-          <TouchableOpacity style={styles.speakerButton} onPress={handlePronounce}>
-            <Ionicons name="volume-high" size={28} color={colors.primary} />
-          </TouchableOpacity>
-        </View>
-        <View style={styles.typeSection}>
-          <Text style={[styles.typeTag, { color: colors.primary, backgroundColor: colors.primaryLight }]}>{currentWord?.type}</Text>
-        </View>
+          <View style={styles.typeSection}>
+            <Text style={[styles.typeTag, { color: colors.primary, backgroundColor: colors.primaryLight }]}>{currentWord?.type}</Text>
+          </View>
+        </Animated.View>
 
         {/* 第1轮：未看答案时显示选项 + 看答案按钮 */}
         {currentRound === 1 && !waitingForNext && !showMeaningCard && (
           <>
             <View style={styles.optionsSection}>
               {options.map((option, index) => (
-                <TouchableOpacity
+                <ScaleTouchable
                   key={index}
                   style={[styles.optionButton, getOptionStyle(option)]}
                   onPress={() => handleSelectOption(option)}
                   disabled={optionsDisabled}
-                  activeOpacity={0.7}
                 >
-                  <Text style={[styles.optionLetter, { color: optionsDisabled && option === currentWord?.meaning ? '#ffffff' : colors.primary }]}>
-                    {String.fromCharCode(65 + index)}
-                  </Text>
                   <Text style={getOptionTextStyle(option)}>{option}</Text>
-                </TouchableOpacity>
+                </ScaleTouchable>
               ))}
             </View>
             {showContinueButton ? (
               <View style={styles.showAnswerSection}>
-                <TouchableOpacity style={[styles.continueButton, { backgroundColor: colors.primary }]} onPress={handleContinue}>
+                <ScaleTouchable style={[styles.continueButton, { backgroundColor: colors.primary }]} onPress={handleContinue}>
                   <Text style={styles.continueButtonText}>继续</Text>
-                </TouchableOpacity>
+                </ScaleTouchable>
               </View>
             ) : (
               <View style={styles.showAnswerSection}>
-                <TouchableOpacity style={[styles.showAnswerButton, { backgroundColor: colors.primary }]} onPress={handleShowAnswer}>
+                <ScaleTouchable style={[styles.showAnswerButton, { backgroundColor: colors.primary }]} onPress={handleShowAnswer}>
                   <Text style={styles.showAnswerText}>看答案</Text>
-                </TouchableOpacity>
+                </ScaleTouchable>
               </View>
             )}
           </>
@@ -754,30 +845,34 @@ export default function LearnScreen({ route, navigation }) {
             {currentRound === 2 && currentWord?.example && (
               <View style={[styles.round2Card, { backgroundColor: colors.card }]}>
                 <Text style={[styles.exampleLabel, { color: colors.textSecondary }]}>例句：</Text>
-                <Text style={[styles.round2ExampleJp, { color: colors.text }]}>{currentWord.example}</Text>
-                <View style={styles.round2SpeakerContainer}>
+                <View style={styles.exampleRow}>
+                  <View style={styles.exampleTextContainer}>
+                    <Text style={[styles.round2ExampleJp, { color: colors.text }]}>{currentWord.example}</Text>
+                    {showHint && currentWord?.exampleZh && (
+                      <Text style={[styles.round2ExampleZh, { color: colors.textSecondary }]}>{currentWord.exampleZh}</Text>
+                    )}
+                  </View>
                   <TouchableOpacity onPress={handleExamplePronounce}>
                     <Ionicons name="volume-high" size={24} color={colors.primary} />
                   </TouchableOpacity>
                 </View>
-                {showHint && currentWord?.exampleZh && (
-                  <Text style={[styles.round2ExampleZh, { color: colors.textSecondary }]}>{currentWord.exampleZh}</Text>
-                )}
               </View>
             )}
             {currentRound === 2 && !showHint && (
-              <TouchableOpacity style={styles.hintButton} onPress={() => setShowHint(true)}>
-                <Ionicons name="bulb-outline" size={24} color={colors.warning} />
-                <Text style={[styles.hintText, { color: colors.textSecondary }]}>提示一下</Text>
-              </TouchableOpacity>
+              <ScaleTouchable style={styles.hintButton} onPress={() => setShowHint(true)}>
+                <View style={styles.hintContent}>
+                  <Ionicons name="bulb-outline" size={24} color={colors.warning} />
+                  <Text style={[styles.hintText, { color: colors.textSecondary }]}>提示一下</Text>
+                </View>
+              </ScaleTouchable>
             )}
             <View style={styles.judgmentButtons}>
-              <TouchableOpacity style={[styles.knowButton, { backgroundColor: colors.success }]} onPress={() => handleJudgment(true)}>
+              <ScaleTouchable style={[styles.knowButton, { backgroundColor: colors.success }]} onPress={() => handleJudgment(true)}>
                 <Text style={styles.judgmentText}>认识</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.dontKnowButton, { backgroundColor: colors.danger }]} onPress={() => handleJudgment(false)}>
+              </ScaleTouchable>
+              <ScaleTouchable style={[styles.dontKnowButton, { backgroundColor: colors.danger }]} onPress={() => handleJudgment(false)}>
                 <Text style={styles.judgmentText}>不认识</Text>
-              </TouchableOpacity>
+              </ScaleTouchable>
             </View>
           </View>
         )}
@@ -788,30 +883,30 @@ export default function LearnScreen({ route, navigation }) {
         {/* 下一词按钮（第1轮） */}
         {waitingForNext && !showMeaningCard && (
           <View style={styles.nextButtonSection}>
-            <TouchableOpacity style={[styles.nextButton, { backgroundColor: colors.primary }]} onPress={handleNextWord}>
+            <ScaleTouchable style={[styles.nextButton, { backgroundColor: colors.primary }]} onPress={handleNextWord}>
               <Text style={styles.nextButtonText}>下一词</Text>
-            </TouchableOpacity>
+            </ScaleTouchable>
           </View>
         )}
 
         {/* 下一词/记错了按钮（第2/3轮判断后） */}
         {showMeaningCard && !waitingForNext && postJudgmentKnow && (
           <View style={styles.postJudgmentButtons}>
-            <TouchableOpacity style={[styles.nextButton, { backgroundColor: colors.primary, flex: 1 }]} onPress={handleNextWord}>
+            <ScaleTouchable style={[styles.nextButton, { backgroundColor: colors.primary, flex: 1 }]} onPress={handleNextWord}>
               <Text style={styles.nextButtonText}>下一词</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.mistakeButton, { flex: 1 }]} onPress={handleMistake}>
+            </ScaleTouchable>
+            <ScaleTouchable style={[styles.mistakeButton, { flex: 1 }]} onPress={handleMistake}>
               <Text style={styles.mistakeButtonText}>记错了</Text>
-            </TouchableOpacity>
+            </ScaleTouchable>
           </View>
         )}
 
         {/* 下一词按钮（第2/3轮不认识后） */}
         {showMeaningCard && !waitingForNext && !postJudgmentKnow && (
           <View style={styles.nextButtonSection}>
-            <TouchableOpacity style={[styles.nextButton, { backgroundColor: colors.primary }]} onPress={handleNextWord}>
+            <ScaleTouchable style={[styles.nextButton, { backgroundColor: colors.primary }]} onPress={handleNextWord}>
               <Text style={styles.nextButtonText}>下一词</Text>
-            </TouchableOpacity>
+            </ScaleTouchable>
           </View>
         )}
         </>
@@ -847,7 +942,12 @@ const styles = StyleSheet.create({
   progressBar: { flex: 1, height: 6, backgroundColor: '#e5e7eb', borderRadius: 3, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 3 },
   headerButton: { padding: 8 },
-  wordSection: { alignItems: 'center', paddingVertical: 24 },
+  wordSection: { paddingVertical: 24, paddingHorizontal: 16 },
+  wordMain: { flexDirection: 'row', alignItems: 'center' },
+  wordLeft: { flex: 1, alignItems: 'center' },
+  wordRow: { flexDirection: 'row', alignItems: 'center' },
+  roundIndicatorInline: { flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, marginLeft: 10 },
+  roundDotInline: { width: 6, height: 6, borderRadius: 3 },
   wordText: { fontSize: 36, fontWeight: 'bold', marginBottom: 8 },
   wordMeta: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   kanaText: { fontSize: 16 },
@@ -875,10 +975,13 @@ const styles = StyleSheet.create({
   roundLabel: { textAlign: 'center', fontSize: 12, marginBottom: 12 },
   round2Card: { padding: 16, borderRadius: 16, marginBottom: 12 },
   exampleLabel: { fontSize: 12, marginBottom: 8 },
-  round2ExampleJp: { fontSize: 16, marginBottom: 4 },
-  round2SpeakerContainer: { alignItems: 'flex-end', marginTop: 12 },
-  round2ExampleZh: { fontSize: 14, marginTop: 8, color: '#6b7280' },
-  hintButton: { flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, marginBottom: 8 },
+  exampleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  exampleTextContainer: { flex: 1 },
+  round2ExampleJp: { fontSize: 16 },
+  round2ExampleZh: { fontSize: 14, marginTop: 4, color: '#6b7280' },
+  round2SpeakerContainer: { alignItems: 'flex-end' },
+  hintButton: { paddingVertical: 12, marginBottom: 8 },
+  hintContent: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   hintText: { fontSize: 11, marginTop: 4 },
   judgmentButtons: { flexDirection: 'row', gap: 12 },
   knowButton: { flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
