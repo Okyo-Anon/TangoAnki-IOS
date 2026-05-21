@@ -6,15 +6,22 @@ import {
   StyleSheet,
   ScrollView,
   TextInput,
-  Modal,
   SafeAreaView,
-  Pressable,
   ActivityIndicator,
+  Animated,
+  LayoutAnimation,
+  UIManager,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect, useNavigationState } from '@react-navigation/native';
 import { useApp } from '../context/AppContext';
 import { getColors } from '../utils/colors';
 import { speakJapanese, shuffleArray } from '../utils/helpers';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 export default function HomeScreen({ navigation }) {
   const {
@@ -40,6 +47,26 @@ export default function HomeScreen({ navigation }) {
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const searchTimeoutRef = useRef(null);
+  const currentIndex = useNavigationState(state => state.index);
+  const prevIndex = useRef(currentIndex);
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  useFocusEffect(
+    useCallback(() => {
+      const didTabChange = prevIndex.current !== null && prevIndex.current !== currentIndex;
+      if (didTabChange) {
+        scaleAnim.setValue(0.99);
+        Animated.timing(scaleAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }).start();
+      } else {
+        scaleAnim.setValue(1);
+      }
+      prevIndex.current = currentIndex;
+    }, [currentIndex, scaleAnim])
+  );
 
   useEffect(() => {
     if (allWords.length > 0) {
@@ -109,7 +136,7 @@ export default function HomeScreen({ navigation }) {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.container}>
+      <Animated.View style={[styles.container, { transform: [{ scaleY: scaleAnim }] }]}>
         {/* Header */}
         <View style={[styles.header, { backgroundColor: colors.background }]}>
           <TouchableOpacity
@@ -178,7 +205,7 @@ export default function HomeScreen({ navigation }) {
                   style={styles.speakerButton}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="volume-high" size={20} color={colors.primary} />
+                  <Ionicons name="volume-medium" size={20} color={colors.primary} />
                 </TouchableOpacity>
               </TouchableOpacity>
             ))}
@@ -188,37 +215,38 @@ export default function HomeScreen({ navigation }) {
         {/* Main Content */}
         {!showSearch && searchResults.length === 0 && (
           <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
-            {/* Random Word Preview */}
+            {/* Daily Word */}
             {randomWord && (
-              <TouchableOpacity
-                style={[styles.randomWordCard, { backgroundColor: colors.card }]}
-                onPress={() => navigation.navigate('WordDetail', { word: randomWord })}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.previewLabel, { color: colors.textTertiary }]}>今日单词</Text>
-                <Text style={[styles.previewWord, { color: colors.text }]}>{randomWord.word}</Text>
-                <View style={styles.previewRow}>
-                  <Text style={[styles.previewKana, { color: colors.textSecondary }]}>
-                    {randomWord.kana}
-                  </Text>
-                  <Text style={[styles.previewPitch, { color: colors.primary }]}>
-                    {randomWord.pitch}
-                  </Text>
-                </View>
-                <Text style={[styles.previewMeaning, { color: colors.textSecondary }]}>
-                  {randomWord.meaning}
+              <View style={[styles.dailyWordCard, { backgroundColor: colors.card }]}>
+                <Text style={[styles.dailyWordLabel, { color: colors.textTertiary }]}>
+                  每日单词
                 </Text>
                 <TouchableOpacity
-                  style={styles.previewSpeaker}
+                  style={styles.dailyWordContent}
+                  onPress={() => navigation.navigate('WordDetail', { word: randomWord })}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.dailyWord, { color: colors.text }]}>
+                    {randomWord.word}
+                  </Text>
+                  <Text style={[styles.dailyKana, { color: colors.textSecondary }]}>
+                    {randomWord.kana}
+                  </Text>
+                  <Text style={[styles.dailyMeaning, { color: colors.textSecondary }]}>
+                    {randomWord.meaning}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.speakerIconButton}
                   onPress={() => speakJapanese(randomWord.word)}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="volume-high" size={24} color={colors.primary} />
+                  <Ionicons name="volume-medium" size={24} color={colors.primary} />
                 </TouchableOpacity>
-              </TouchableOpacity>
+              </View>
             )}
 
-            {/* Word Library Card */}
+            {/* Library Card */}
             <TouchableOpacity
               style={[styles.libraryCard, { backgroundColor: colors.card }]}
               activeOpacity={0.7}
@@ -258,7 +286,7 @@ export default function HomeScreen({ navigation }) {
             </View>
           </ScrollView>
         )}
-      </View>
+      </Animated.View>
     </SafeAreaView>
   );
 }
@@ -284,8 +312,8 @@ const styles = StyleSheet.create({
   },
   avatarText: {
     color: '#fff',
-    fontWeight: 'bold',
     fontSize: 18,
+    fontWeight: 'bold',
   },
   searchButton: {
     padding: 8,
@@ -293,21 +321,21 @@ const styles = StyleSheet.create({
   searchArea: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 12,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    gap: 8,
   },
   searchInput: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 25,
+    paddingVertical: 8,
     fontSize: 16,
   },
   searchResults: {
-    flex: 1,
-    paddingHorizontal: 16,
-    marginTop: 12,
+    maxHeight: 300,
+    marginHorizontal: 16,
   },
   searchResultItem: {
     flexDirection: 'row',
@@ -324,7 +352,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   searchResultKana: {
-    fontSize: 12,
+    fontSize: 14,
     marginTop: 2,
   },
   speakerButton: {
@@ -335,48 +363,38 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     padding: 16,
-    paddingBottom: 16,
+    paddingBottom: 100,
   },
-  randomWordCard: {
-    padding: 24,
+  dailyWordCard: {
     borderRadius: 16,
-    alignItems: 'center',
+    padding: 16,
     marginBottom: 16,
-    position: 'relative',
   },
-  previewLabel: {
+  dailyWordLabel: {
     fontSize: 12,
     marginBottom: 8,
   },
-  previewWord: {
+  dailyWordContent: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  dailyWord: {
     fontSize: 32,
     fontWeight: 'bold',
-    marginBottom: 8,
   },
-  previewRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
+  dailyKana: {
+    fontSize: 18,
+    marginTop: 4,
   },
-  previewKana: {
+  dailyMeaning: {
     fontSize: 16,
+    marginTop: 4,
   },
-  previewPitch: {
-    fontSize: 14,
-    backgroundColor: '#eff6ff',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-  previewMeaning: {
-    fontSize: 16,
-  },
-  previewSpeaker: {
+  speakerIconButton: {
     position: 'absolute',
     top: 16,
     right: 16,
-    padding: 8,
+    padding: 4,
   },
   libraryCard: {
     flexDirection: 'row',
@@ -402,41 +420,37 @@ const styles = StyleSheet.create({
   bottomButtons: {
     flexDirection: 'row',
     gap: 12,
-    marginTop: 16,
-    marginBottom: 100,
   },
   learnButton: {
     flex: 1,
-    paddingVertical: 16,
+    padding: 16,
     borderRadius: 16,
     alignItems: 'center',
   },
-  buttonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-    includeFontPadding: false,
-  },
-  buttonCountInside: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 12,
-    marginTop: 2,
-  },
   reviewButton: {
     flex: 1,
-    paddingVertical: 16,
+    padding: 16,
     borderRadius: 16,
     alignItems: 'center',
     borderWidth: 2,
   },
-  reviewButtonText: {
-    fontSize: 18,
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
     fontWeight: 'bold',
-    includeFontPadding: false,
+  },
+  buttonCountInside: {
+    color: '#fff',
+    fontSize: 12,
+    marginTop: 4,
+    opacity: 0.8,
+  },
+  reviewButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   reviewCountInside: {
     fontSize: 12,
-    marginTop: 2,
-    includeFontPadding: false,
+    marginTop: 4,
   },
 });

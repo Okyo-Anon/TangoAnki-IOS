@@ -1,4 +1,4 @@
-﻿﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -165,20 +165,21 @@ export default function LearnScreen({ route, navigation }) {
   const generateOptionsForWord = useCallback((word) => {
     if (!word) return;
     const correctMeaning = word.meaning;
+    const correctType = word.type;
     const wrongOptions = allWords
       .filter(w => w.id !== word.id)
       .sort(() => Math.random() - 0.5)
       .slice(0, 3)
-      .map(w => w.meaning);
-    const allOptions = shuffleArray([correctMeaning, ...wrongOptions]);
+      .map(w => ({ meaning: w.meaning, type: w.type }));
+    const allOptions = shuffleArray([{ meaning: correctMeaning, type: correctType }, ...wrongOptions]);
     setOptions(allOptions);
   }, [allWords]);
 
-  const handleSelectOption = (meaning) => {
+  const handleSelectOption = (option) => {
     if (optionsDisabled || !currentWord) return;
 
-    const correct = meaning === currentWord.meaning;
-    setSelectedOption(meaning);
+    const correct = option.meaning === currentWord.meaning;
+    setSelectedOption(option.meaning);
     setIsCorrect(correct);
     setOptionsDisabled(true);
     recordAnswer(currentWord.id, correct ? 'know' : 'dontKnow');
@@ -484,8 +485,8 @@ export default function LearnScreen({ route, navigation }) {
 
   const getOptionStyle = (option) => {
     if (!optionsDisabled) return { backgroundColor: colors.card };
-    const isCorrectOption = option === currentWord?.meaning;
-    const isSelectedOption = option === selectedOption;
+    const isCorrectOption = option.meaning === currentWord?.meaning;
+    const isSelectedOption = option.meaning === selectedOption;
     if (isCorrectOption) return { backgroundColor: '#22c55e', borderWidth: 2, borderColor: '#16a34a' };
     if (isSelectedOption && !isCorrect) return { backgroundColor: '#ef4444', borderWidth: 2, borderColor: '#dc2626' };
     return { backgroundColor: colors.card };
@@ -493,10 +494,18 @@ export default function LearnScreen({ route, navigation }) {
 
   const getOptionTextStyle = (option) => {
     if (!optionsDisabled) return { color: colors.text };
-    const isCorrectOption = option === currentWord?.meaning;
+    const isCorrectOption = option.meaning === currentWord?.meaning;
     if (isCorrectOption) return { color: '#ffffff' };
-    if (option === selectedOption && !isCorrect) return { color: '#ffffff' };
+    if (option.meaning === selectedOption && !isCorrect) return { color: '#ffffff' };
     return { color: colors.text };
+  };
+
+  const getOptionTypeStyle = (option) => {
+    if (!optionsDisabled) return { color: colors.textSecondary };
+    const isCorrectOption = option.meaning === currentWord?.meaning;
+    if (isCorrectOption) return { color: 'rgba(255,255,255,0.7)' };
+    if (option.meaning === selectedOption && !isCorrect) return { color: 'rgba(255,255,255,0.7)' };
+    return { color: colors.textSecondary };
   };
 
   const progress = initialCount > 0 ? (completedCount / initialCount) * 100 : 0;
@@ -615,7 +624,7 @@ export default function LearnScreen({ route, navigation }) {
 
   // 主学习界面
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.primaryLight }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.container}>
         {/* 头部 */}
         <View style={styles.header}>
@@ -781,8 +790,8 @@ export default function LearnScreen({ route, navigation }) {
           </View>
         ) : (
           <>
-        {/* 单词展示区 */}
-        <Animated.View style={[styles.wordSection, { opacity: fadeAnim, transform: [{ translateX: slideAnim }] }]}>
+        <ScrollView style={styles.scrollContent} contentContainerStyle={styles.scrollContentContainer} showsVerticalScrollIndicator={false}>
+          <Animated.View style={[styles.wordSection, { opacity: fadeAnim, transform: [{ translateX: slideAnim }] }]}>
           <View style={styles.wordMain}>
             <View style={styles.wordLeft}>
               <View style={styles.wordRow}>
@@ -802,45 +811,30 @@ export default function LearnScreen({ route, navigation }) {
               </TouchableOpacity>
             </View>
           </View>
-          <View style={styles.typeSection}>
-            <Text style={[styles.typeTag, { color: colors.primary, backgroundColor: colors.primaryLight }]}>{currentWord?.type}</Text>
-          </View>
         </Animated.View>
 
-        {/* 第1轮：未看答案时显示选项 + 看答案按钮 */}
+        {/* 第1轮：选项区域 */}
         {currentRound === 1 && !waitingForNext && !showMeaningCard && (
-          <>
-            <View style={styles.optionsSection}>
-              {options.map((option, index) => (
-                <ScaleTouchable
-                  key={index}
-                  style={[styles.optionButton, getOptionStyle(option)]}
-                  onPress={() => handleSelectOption(option)}
-                  disabled={optionsDisabled}
-                >
-                  <Text style={getOptionTextStyle(option)}>{option}</Text>
-                </ScaleTouchable>
-              ))}
-            </View>
-            {showContinueButton ? (
-              <View style={styles.showAnswerSection}>
-                <ScaleTouchable style={[styles.continueButton, { backgroundColor: colors.primary }]} onPress={handleContinue}>
-                  <Text style={styles.continueButtonText}>继续</Text>
-                </ScaleTouchable>
-              </View>
-            ) : (
-              <View style={styles.showAnswerSection}>
-                <ScaleTouchable style={[styles.showAnswerButton, { backgroundColor: colors.primary }]} onPress={handleShowAnswer}>
-                  <Text style={styles.showAnswerText}>看答案</Text>
-                </ScaleTouchable>
-              </View>
-            )}
-          </>
+          <View style={styles.optionsSection}>
+            {options.map((option, index) => (
+              <ScaleTouchable
+                key={index}
+                style={[styles.optionButton, getOptionStyle(option)]}
+                onPress={() => handleSelectOption(option)}
+                disabled={optionsDisabled}
+              >
+                <View style={styles.optionContent}>
+                  <Text style={[styles.optionType, getOptionTypeStyle(option)]}>{option.type}</Text>
+                  <Text style={getOptionTextStyle(option)}>{option.meaning}</Text>
+                </View>
+              </ScaleTouchable>
+            ))}
+          </View>
         )}
 
-        {/* 第2、3轮：未不认识时显示判断区域 */}
+        {/* 第2、3轮：例句区域 */}
         {currentRound >= 2 && currentRound <= 3 && !waitingForNext && !showMeaningCard && (
-          <View style={styles.judgmentSection}>
+          <>
             <Text style={[styles.roundLabel, { color: colors.textTertiary }]}>第{currentRound}轮</Text>
             {currentRound === 2 && currentWord?.example && (
               <View style={[styles.round2Card, { backgroundColor: colors.card }]}>
@@ -848,9 +842,7 @@ export default function LearnScreen({ route, navigation }) {
                 <View style={styles.exampleRow}>
                   <View style={styles.exampleTextContainer}>
                     <Text style={[styles.round2ExampleJp, { color: colors.text }]}>{currentWord.example}</Text>
-                    {showHint && currentWord?.exampleZh && (
-                      <Text style={[styles.round2ExampleZh, { color: colors.textSecondary }]}>{currentWord.exampleZh}</Text>
-                    )}
+                    <Text style={[styles.round2ExampleZh, { color: colors.textSecondary, opacity: showHint ? 1 : 0 }]}>{currentWord.exampleZh}</Text>
                   </View>
                   <TouchableOpacity onPress={handleExamplePronounce}>
                     <Ionicons name="volume-high" size={24} color={colors.primary} />
@@ -858,6 +850,31 @@ export default function LearnScreen({ route, navigation }) {
                 </View>
               </View>
             )}
+          </>
+        )}
+
+        {/* 答案卡片 */}
+        {(waitingForNext || showMeaningCard) && renderMeaningCard()}
+        </ScrollView>
+
+        <View style={styles.bottomButtons}>
+        <View style={styles.bottomButtonWrapper}>
+        {/* 第1轮：看答案/继续按钮 */}
+        {currentRound === 1 && !waitingForNext && !showMeaningCard && (
+          showContinueButton ? (
+            <ScaleTouchable style={[styles.continueButton, { backgroundColor: colors.primary }]} onPress={handleContinue}>
+              <Text style={styles.continueButtonText}>继续</Text>
+            </ScaleTouchable>
+          ) : (
+            <ScaleTouchable style={[styles.showAnswerButton, { backgroundColor: colors.primary }]} onPress={handleShowAnswer}>
+              <Text style={styles.showAnswerText}>看答案</Text>
+            </ScaleTouchable>
+          )
+        )}
+
+        {/* 第2、3轮：提示按钮 + 认识/不认识按钮 */}
+        {currentRound >= 2 && currentRound <= 3 && !waitingForNext && !showMeaningCard && (
+          <>
             {currentRound === 2 && !showHint && (
               <ScaleTouchable style={styles.hintButton} onPress={() => setShowHint(true)}>
                 <View style={styles.hintContent}>
@@ -874,24 +891,19 @@ export default function LearnScreen({ route, navigation }) {
                 <Text style={styles.judgmentText}>不认识</Text>
               </ScaleTouchable>
             </View>
-          </View>
+          </>
         )}
-
-        {/* 答案卡片 */}
-        {(waitingForNext || showMeaningCard) && renderMeaningCard()}
 
         {/* 下一词按钮（第1轮） */}
         {waitingForNext && !showMeaningCard && (
-          <View style={styles.nextButtonSection}>
-            <ScaleTouchable style={[styles.nextButton, { backgroundColor: colors.primary }]} onPress={handleNextWord}>
-              <Text style={styles.nextButtonText}>下一词</Text>
-            </ScaleTouchable>
-          </View>
+          <ScaleTouchable style={[styles.nextButton, { backgroundColor: colors.primary }]} onPress={handleNextWord}>
+            <Text style={styles.nextButtonText}>下一词</Text>
+          </ScaleTouchable>
         )}
 
         {/* 下一词/记错了按钮（第2/3轮判断后） */}
         {showMeaningCard && !waitingForNext && postJudgmentKnow && (
-          <View style={styles.postJudgmentButtons}>
+          <View style={styles.judgmentButtons}>
             <ScaleTouchable style={[styles.nextButton, { backgroundColor: colors.primary, flex: 1 }]} onPress={handleNextWord}>
               <Text style={styles.nextButtonText}>下一词</Text>
             </ScaleTouchable>
@@ -903,12 +915,12 @@ export default function LearnScreen({ route, navigation }) {
 
         {/* 下一词按钮（第2/3轮不认识后） */}
         {showMeaningCard && !waitingForNext && !postJudgmentKnow && (
-          <View style={styles.nextButtonSection}>
-            <ScaleTouchable style={[styles.nextButton, { backgroundColor: colors.primary }]} onPress={handleNextWord}>
-              <Text style={styles.nextButtonText}>下一词</Text>
-            </ScaleTouchable>
-          </View>
+          <ScaleTouchable style={[styles.nextButton, { backgroundColor: colors.primary }]} onPress={handleNextWord}>
+            <Text style={styles.nextButtonText}>下一词</Text>
+          </ScaleTouchable>
         )}
+        </View>
+        </View>
         </>
         )}
       </View>
@@ -918,6 +930,11 @@ export default function LearnScreen({ route, navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  scrollContent: { flex: 1 },
+  scrollContentContainer: { flexGrow: 1 },
+  bottomButtons: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingBottom: 16 },
+  bottomButtonWrapper: { paddingHorizontal: 16, gap: 8 },
+  hintButton: { paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 20 },
   completeText: { fontSize: 24, fontWeight: 'bold' },
   spellingButton: { paddingVertical: 14, paddingHorizontal: 32, borderRadius: 12 },
@@ -956,7 +973,9 @@ const styles = StyleSheet.create({
   typeSection: { alignItems: 'center', paddingBottom: 16 },
   typeTag: { fontSize: 12, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 },
   optionsSection: { paddingHorizontal: 16, paddingBottom: 16 },
-  optionButton: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 12, marginBottom: 8 },
+  optionButton: { padding: 16, borderRadius: 12, marginBottom: 8 },
+  optionContent: { alignItems: 'flex-start' },
+  optionType: { fontSize: 12, marginBottom: 2 },
   optionLetter: { fontSize: 16, fontWeight: 'bold', marginRight: 12 },
   showAnswerSection: { paddingHorizontal: 16 },
   showAnswerButton: { paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
@@ -980,7 +999,6 @@ const styles = StyleSheet.create({
   round2ExampleJp: { fontSize: 16 },
   round2ExampleZh: { fontSize: 14, marginTop: 4, color: '#6b7280' },
   round2SpeakerContainer: { alignItems: 'flex-end' },
-  hintButton: { paddingVertical: 12, marginBottom: 8 },
   hintContent: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   hintText: { fontSize: 11, marginTop: 4 },
   judgmentButtons: { flexDirection: 'row', gap: 12 },

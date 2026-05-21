@@ -27,7 +27,7 @@ export default function ResultScreen({ route, navigation }) {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.primaryLight }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>

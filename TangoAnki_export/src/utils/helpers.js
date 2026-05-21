@@ -94,6 +94,7 @@ export const updateReviewInterval = (wordId, quality, userVocab) => {
     if (isNew || !vocab.lastReviewDate) {
       vocab.stability = 0;
       vocab.lastReviewDate = today;
+      vocab.learnedDate = today;
       const nextDate = new Date();
       nextDate.setDate(nextDate.getDate() + 1);
       vocab.dueDate = nextDate.toISOString().split('T')[0];

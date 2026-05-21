@@ -2,7 +2,7 @@ import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createStackNavigator, TransitionPresets } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -17,17 +17,43 @@ import LoginScreen from './src/screens/LoginScreen';
 import LearningSettingsScreen from './src/screens/LearningSettingsScreen';
 import AppearanceSettingsScreen from './src/screens/AppearanceSettingsScreen';
 import WordDetailScreen from './src/screens/WordDetailScreen';
+import WordListScreen from './src/screens/WordListScreen';
 import ResultScreen from './src/screens/ResultScreen';
 import SpellingScreen from './src/screens/SpellingScreen';
-import FloatingBottomTabBar from './src/components/FloatingBottomTabBar';
+import RecentLearningScreen from './src/screens/RecentLearningScreen';
+import AllLearningScreen from './src/screens/AllLearningScreen';
+import BottomTabBar from './src/components/BottomTabBar';
 
 const Tab = createBottomTabNavigator();
-const Stack = createNativeStackNavigator();
+const Stack = createStackNavigator();
+
+// 自定义从底部滑入 + 缩放动画（用于 Modal）
+const forScaleFromBottom = ({ current }) => {
+  const translateY = current.progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [50, 0],
+  });
+  const scale = current.progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.96, 1],
+  });
+  const opacity = current.progress.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0, 0.8, 1],
+  });
+
+  return {
+    cardStyle: {
+      opacity,
+      transform: [{ translateY }, { scale }],
+    },
+  };
+};
 
 function MainTabs() {
   return (
     <Tab.Navigator
-      tabBar={props => <FloatingBottomTabBar {...props} />}
+      tabBar={props => <BottomTabBar {...props} />}
       screenOptions={{
         headerShown: false,
       }}
@@ -67,69 +93,69 @@ export default function App() {
               name="Learn"
               component={LearnScreen}
               options={{
-                presentation: 'fullScreenModal',
-                animation: 'slide_from_bottom',
+                ...TransitionPresets.ModalSlideFromBottomIOS,
+                cardStyleInterpolator: forScaleFromBottom,
               }}
             />
             <Stack.Screen
               name="Result"
               component={ResultScreen}
               options={{
-                presentation: 'fullScreenModal',
-                animation: 'slide_from_bottom',
+                ...TransitionPresets.ModalSlideFromBottomIOS,
+                cardStyleInterpolator: forScaleFromBottom,
               }}
             />
             <Stack.Screen
               name="Profile"
               component={ProfileScreen}
-              options={{
-                presentation: 'card',
-              }}
             />
             <Stack.Screen
               name="Settings"
               component={SettingsScreen}
-              options={{
-                presentation: 'card',
-              }}
             />
             <Stack.Screen
               name="Login"
               component={LoginScreen}
               options={{
-                presentation: 'modal',
-                animation: 'slide_from_bottom',
+                ...TransitionPresets.ModalSlideFromBottomIOS,
+                cardStyleInterpolator: forScaleFromBottom,
               }}
             />
             <Stack.Screen
               name="LearningSettings"
               component={LearningSettingsScreen}
-              options={{
-                presentation: 'card',
-              }}
             />
             <Stack.Screen
               name="AppearanceSettings"
               component={AppearanceSettingsScreen}
-              options={{
-                presentation: 'card',
-              }}
             />
             <Stack.Screen
               name="WordDetail"
               component={WordDetailScreen}
               options={{
-                presentation: 'modal',
-                animation: 'slide_from_bottom',
+                ...TransitionPresets.ModalSlideFromBottomIOS,
+                cardStyleInterpolator: forScaleFromBottom,
               }}
             />
             <Stack.Screen
               name="Spelling"
               component={SpellingScreen}
               options={{
-                presentation: 'fullScreenModal',
-                animation: 'slide_from_bottom',
+                ...TransitionPresets.ModalSlideFromBottomIOS,
+                cardStyleInterpolator: forScaleFromBottom,
               }}
+            />
+            <Stack.Screen
+              name="WordList"
+              component={WordListScreen}
+            />
+            <Stack.Screen
+              name="RecentLearning"
+              component={RecentLearningScreen}
+            />
+            <Stack.Screen
+              name="AllLearning"
+              component={AllLearningScreen}
             />
           </Stack.Navigator>
         </NavigationContainer>

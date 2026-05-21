@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,8 +6,10 @@ import {
   StyleSheet,
   ScrollView,
   SafeAreaView,
+  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect, useNavigationState } from '@react-navigation/native';
 import { useApp } from '../context/AppContext';
 import { getColors } from '../utils/colors';
 
@@ -28,89 +30,110 @@ export default function ContentScreen({ navigation }) {
   const learningWords = allWords.filter(w => userVocab[w.id]);
   const bookmarkedWordList = allWords.filter(w => bookmarkedWords.includes(w.id));
 
+  const currentIndex = useNavigationState(state => state.index);
+  const prevIndex = useRef(currentIndex);
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  useFocusEffect(
+    useCallback(() => {
+      const didTabChange = prevIndex.current !== null && prevIndex.current !== currentIndex;
+      if (didTabChange) {
+        scaleAnim.setValue(0.99);
+        Animated.timing(scaleAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }).start();
+      } else {
+        scaleAnim.setValue(1);
+      }
+      prevIndex.current = currentIndex;
+    }, [currentIndex, scaleAnim])
+  );
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={[styles.title, { color: colors.text }]}>学习内容</Text>
+      <Animated.View style={[styles.container, { transform: [{ scaleY: scaleAnim }] }]}>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <Text style={[styles.title, { color: colors.text }]}>学习内容</Text>
 
-        {/* Learning Progress */}
-        <View style={[styles.section, { backgroundColor: colors.card }]}>
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => {
-              // Navigate to learning words
-            }}
-          >
-            <View style={styles.menuLeft}>
-              <Ionicons name="book-outline" size={20} color={colors.textSecondary} />
-              <Text style={[styles.menuLabel, { color: colors.text }]}>
-                正在学习的单词
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
-          </TouchableOpacity>
+          {/* Learning Progress */}
+          <View style={[styles.section, { backgroundColor: colors.card }]}>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => navigation.navigate('WordList')}
+            >
+              <View style={styles.menuLeft}>
+                <Ionicons name="book-outline" size={20} color={colors.textSecondary} />
+                <Text style={[styles.menuLabel, { color: colors.text }]}>
+                  正在学习的单词
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+            </TouchableOpacity>
 
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-          <TouchableOpacity style={styles.menuItem}>
-            <View style={styles.menuLeft}>
-              <Ionicons name="time-outline" size={20} color={colors.textSecondary} />
-              <Text style={[styles.menuLabel, { color: colors.text }]}>最近学习</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
-          </TouchableOpacity>
+            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('RecentLearning')}>
+              <View style={styles.menuLeft}>
+                <Ionicons name="time-outline" size={20} color={colors.textSecondary} />
+                <Text style={[styles.menuLabel, { color: colors.text }]}>最近学习</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+            </TouchableOpacity>
 
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-          <TouchableOpacity style={styles.menuItem}>
-            <View style={styles.menuLeft}>
-              <Ionicons name="library-outline" size={20} color={colors.textSecondary} />
-              <Text style={[styles.menuLabel, { color: colors.text }]}>
-                全部学习 ({learningWords.length})
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
-          </TouchableOpacity>
-        </View>
+            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('AllLearning')}>
+              <View style={styles.menuLeft}>
+                <Ionicons name="library-outline" size={20} color={colors.textSecondary} />
+                <Text style={[styles.menuLabel, { color: colors.text }]}>
+                  全部学习 ({learningWords.length})
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+            </TouchableOpacity>
+          </View>
 
-        {/* Collection */}
-        <View style={[styles.section, { backgroundColor: colors.card }]}>
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => {
-              // Navigate to wordbook
-            }}
-          >
-            <View style={styles.menuLeft}>
-              <Ionicons name="bookmark-outline" size={20} color={colors.textSecondary} />
-              <Text style={[styles.menuLabel, { color: colors.text }]}>
-                单词本 ({bookmarkedWordList.length})
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
-          </TouchableOpacity>
+          {/* Collection */}
+          <View style={[styles.section, { backgroundColor: colors.card }]}>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                // Navigate to wordbook
+              }}
+            >
+              <View style={styles.menuLeft}>
+                <Ionicons name="bookmark-outline" size={20} color={colors.textSecondary} />
+                <Text style={[styles.menuLabel, { color: colors.text }]}>
+                  单词本 ({bookmarkedWordList.length})
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+            </TouchableOpacity>
 
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-          <TouchableOpacity style={styles.menuItem}>
-            <View style={styles.menuLeft}>
-              <Ionicons name="document-text-outline" size={20} color={colors.textSecondary} />
-              <Text style={[styles.menuLabel, { color: colors.text }]}>例句库</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
-          </TouchableOpacity>
+            <TouchableOpacity style={styles.menuItem}>
+              <View style={styles.menuLeft}>
+                <Ionicons name="document-text-outline" size={20} color={colors.textSecondary} />
+                <Text style={[styles.menuLabel, { color: colors.text }]}>例句库</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+            </TouchableOpacity>
 
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-          <TouchableOpacity style={styles.menuItem}>
-            <View style={styles.menuLeft}>
-              <Ionicons name="create-outline" size={20} color={colors.textSecondary} />
-              <Text style={[styles.menuLabel, { color: colors.text }]}>笔记</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+            <TouchableOpacity style={styles.menuItem}>
+              <View style={styles.menuLeft}>
+                <Ionicons name="create-outline" size={20} color={colors.textSecondary} />
+                <Text style={[styles.menuLabel, { color: colors.text }]}>笔记</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </Animated.View>
     </SafeAreaView>
   );
 }

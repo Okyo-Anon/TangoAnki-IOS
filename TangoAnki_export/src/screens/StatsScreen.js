@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,8 +6,10 @@ import {
   ScrollView,
   SafeAreaView,
   Dimensions,
+  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect, useNavigationState } from '@react-navigation/native';
 import { useApp } from '../context/AppContext';
 import { getColors } from '../utils/colors';
 
@@ -58,83 +60,106 @@ export default function StatsScreen({ navigation }) {
 
   const dayNames = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 
+  const currentIndex = useNavigationState(state => state.index);
+  const prevIndex = useRef(currentIndex);
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  useFocusEffect(
+    useCallback(() => {
+      const didTabChange = prevIndex.current !== null && prevIndex.current !== currentIndex;
+      if (didTabChange) {
+        scaleAnim.setValue(0.99);
+        Animated.timing(scaleAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }).start();
+      } else {
+        scaleAnim.setValue(1);
+      }
+      prevIndex.current = currentIndex;
+    }, [currentIndex, scaleAnim])
+  );
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={[styles.title, { color: colors.text }]}>学习统计</Text>
+      <Animated.View style={[styles.container, { transform: [{ scaleY: scaleAnim }] }]}>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <Text style={[styles.title, { color: colors.text }]}>学习统计</Text>
 
-        {/* Main Stats Cards */}
-        <View style={styles.statsGrid}>
-          <View style={[styles.mainStatCard, { backgroundColor: colors.orangeLight }]}>
-            <Ionicons name="flame" size={28} color={colors.orange} style={styles.statIcon} />
-            <Text style={[styles.mainStatNumber, { color: colors.orange }]}>{streak}</Text>
-            <Text style={[styles.mainStatLabel, { color: colors.textSecondary }]}>连续打卡</Text>
+          {/* Main Stats Cards */}
+          <View style={styles.statsGrid}>
+            <View style={[styles.mainStatCard, { backgroundColor: colors.orangeLight }]}>
+              <Ionicons name="flame" size={28} color={colors.orange} style={styles.statIcon} />
+              <Text style={[styles.mainStatNumber, { color: colors.orange }]}>{streak}</Text>
+              <Text style={[styles.mainStatLabel, { color: colors.textSecondary }]}>连续打卡</Text>
+            </View>
+            <View style={[styles.mainStatCard, { backgroundColor: colors.successLight }]}>
+              <Ionicons name="book" size={28} color={colors.success} style={styles.statIcon} />
+              <Text style={[styles.mainStatNumber, { color: colors.success }]}>
+                {masteredWordIds.length}
+              </Text>
+              <Text style={[styles.mainStatLabel, { color: colors.textSecondary }]}>累计掌握</Text>
+            </View>
+            <View style={[styles.mainStatCard, { backgroundColor: colors.primaryLight }]}>
+              <Ionicons name="document-text" size={28} color={colors.primary} style={styles.statIcon} />
+              <Text style={[styles.mainStatNumber, { color: colors.primary }]}>
+                {todayReviewWords.length}
+              </Text>
+              <Text style={[styles.mainStatLabel, { color: colors.textSecondary }]}>今日待复习</Text>
+            </View>
+            <View style={[styles.mainStatCard, { backgroundColor: colors.purpleLight }]}>
+              <Ionicons name="sparkles" size={28} color={colors.purple} style={styles.statIcon} />
+              <Text style={[styles.mainStatNumber, { color: colors.purple }]}>
+                {newWordsRemaining}
+              </Text>
+              <Text style={[styles.mainStatLabel, { color: colors.textSecondary }]}>今日新词</Text>
+            </View>
           </View>
-          <View style={[styles.mainStatCard, { backgroundColor: colors.successLight }]}>
-            <Ionicons name="book" size={28} color={colors.success} style={styles.statIcon} />
-            <Text style={[styles.mainStatNumber, { color: colors.success }]}>
-              {masteredWordIds.length}
-            </Text>
-            <Text style={[styles.mainStatLabel, { color: colors.textSecondary }]}>累计掌握</Text>
-          </View>
-          <View style={[styles.mainStatCard, { backgroundColor: colors.primaryLight }]}>
-            <Ionicons name="document-text" size={28} color={colors.primary} style={styles.statIcon} />
-            <Text style={[styles.mainStatNumber, { color: colors.primary }]}>
-              {todayReviewWords.length}
-            </Text>
-            <Text style={[styles.mainStatLabel, { color: colors.textSecondary }]}>今日待复习</Text>
-          </View>
-          <View style={[styles.mainStatCard, { backgroundColor: colors.purpleLight }]}>
-            <Ionicons name="sparkles" size={28} color={colors.purple} style={styles.statIcon} />
-            <Text style={[styles.mainStatNumber, { color: colors.purple }]}>
-              {newWordsRemaining}
-            </Text>
-            <Text style={[styles.mainStatLabel, { color: colors.textSecondary }]}>今日新词</Text>
-          </View>
-        </View>
 
-        {/* Weekly Chart */}
-        <View style={[styles.chartCard, { backgroundColor: colors.card }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>本周学习趋势</Text>
-          <View style={styles.chartArea}>
-            {weekData.map((count, index) => (
-              <View key={index} style={styles.barContainer}>
-                <View
-                  style={[
-                    styles.bar,
-                    {
-                      height: (count / maxCount) * 100,
-                      backgroundColor: colors.primary,
-                    },
-                  ]}
-                />
-                <Text style={[styles.dayLabel, { color: colors.textTertiary }]}>
-                  {dayNames[index]}
-                </Text>
-              </View>
-            ))}
+          {/* Weekly Chart */}
+          <View style={[styles.chartCard, { backgroundColor: colors.card }]}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>本周学习趋势</Text>
+            <View style={styles.chartArea}>
+              {weekData.map((count, index) => (
+                <View key={index} style={styles.barContainer}>
+                  <View
+                    style={[
+                      styles.bar,
+                      {
+                        height: (count / maxCount) * 100,
+                        backgroundColor: colors.primary,
+                      },
+                    ]}
+                  />
+                  <Text style={[styles.dayLabel, { color: colors.textTertiary }]}>
+                    {dayNames[index]}
+                  </Text>
+                </View>
+              ))}
+            </View>
           </View>
-        </View>
 
-        {/* Total Stats */}
-        <View style={[styles.totalCard, { backgroundColor: colors.card }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>累计学习数据</Text>
-          <View style={styles.totalRow}>
-            <Text style={[styles.totalLabel, { color: colors.textSecondary }]}>累计学习天数</Text>
-            <Text style={[styles.totalValue, { color: colors.text }]}>{totalDays} 天</Text>
+          {/* Total Stats */}
+          <View style={[styles.totalCard, { backgroundColor: colors.card }]}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>累计学习数据</Text>
+            <View style={styles.totalRow}>
+              <Text style={[styles.totalLabel, { color: colors.textSecondary }]}>累计学习天数</Text>
+              <Text style={[styles.totalValue, { color: colors.text }]}>{totalDays} 天</Text>
+            </View>
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            <View style={styles.totalRow}>
+              <Text style={[styles.totalLabel, { color: colors.textSecondary }]}>累计学习单词</Text>
+              <Text style={[styles.totalValue, { color: colors.text }]}>{totalWords} 词</Text>
+            </View>
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            <View style={styles.totalRow}>
+              <Text style={[styles.totalLabel, { color: colors.textSecondary }]}>累计学习时长</Text>
+              <Text style={[styles.totalValue, { color: colors.text }]}>{totalStudyMinutes} 分钟</Text>
+            </View>
           </View>
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
-          <View style={styles.totalRow}>
-            <Text style={[styles.totalLabel, { color: colors.textSecondary }]}>累计学习单词</Text>
-            <Text style={[styles.totalValue, { color: colors.text }]}>{totalWords} 词</Text>
-          </View>
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
-          <View style={styles.totalRow}>
-            <Text style={[styles.totalLabel, { color: colors.textSecondary }]}>累计学习时长</Text>
-            <Text style={[styles.totalValue, { color: colors.text }]}>{totalStudyMinutes} 分钟</Text>
-          </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </Animated.View>
     </SafeAreaView>
   );
 }
